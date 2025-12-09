@@ -1,0 +1,1 @@
+web: gunicorn carbon_calculations.wsgi
