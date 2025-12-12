@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializer import EmbodiedCarbonSerializer
-from .data.a.materials_a1 import MATERIAL_COEFFS
+from .data.a.materials_a1 import MATERIAL_COEFFS, PRESET_PERCENTAGES
 from django.apps import apps
 from rest_framework import status
 from .services.calcs_total import calculate_total_embodied_carbon
@@ -52,3 +52,12 @@ class MaterialsCoefficients(APIView):
     """
     def get(self, request):
         return Response(MATERIAL_COEFFS, status=status.HTTP_200_OK)
+
+
+class MaterialsPresets(APIView):
+    """Return preset percentage allocations for products (from materials_a1.PRESET_PERCENTAGES).
+
+    Frontend will request this endpoint to obtain per-product allocations (e.g. "AHU").
+    """
+    def get(self, request):
+        return Response(PRESET_PERCENTAGES, status=status.HTTP_200_OK)
