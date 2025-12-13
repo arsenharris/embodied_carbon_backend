@@ -61,3 +61,14 @@ class MaterialsPresets(APIView):
     """
     def get(self, request):
         return Response(PRESET_PERCENTAGES, status=status.HTTP_200_OK)
+    def post(self, request):
+            product_type = request.data.get("product_type")
+            materials = request.data.get("materials", {})
+
+            if not product_type:
+                return Response({"error": "product_type is required"}, status=400)
+
+            # Save/update here
+            PRESET_PERCENTAGES[product_type] = materials
+
+            return Response({"message": "Saved successfully"}, status=200)
