@@ -22,7 +22,7 @@ CATEGORY_PRESETS = {
     "category_3_high_complexity": {  # Category 3: high complexity
         "label": "Category 3 - High complexity",
         "examples": [
-            "air handling units", "heat pumps", "boilers", "heat interface units", "MVHR", "switchgear", "UPS",
+            "air handling units", "ahu", "ahu unit", "heat pumps", "boilers", "heat interface units", "MVHR", "switchgear", "UPS",
         ],
         "a2_distance_km": 6000,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 4,  # default rounds of manufacture
