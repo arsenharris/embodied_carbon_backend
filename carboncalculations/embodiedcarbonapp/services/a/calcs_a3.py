@@ -25,8 +25,8 @@ def calculate_a3_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     if carbon_factor is None:
         raise ValueError(f"No electricity carbon factor for location '{location}'")
     
-    a3_kgco2e = energy_kwh_per_unit * rounds_of_manufacture * carbon_factor
+    total_a3 = energy_kwh_per_unit * rounds_of_manufacture * carbon_factor
     
     return {
-        "a3_kgco2e": a3_kgco2e,
+        "total_a3": total_a3,
     }

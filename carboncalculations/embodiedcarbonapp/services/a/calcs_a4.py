@@ -1,4 +1,4 @@
-from ...data.a.materials_a4 import PRESET_A4_SCENARIOS,TRANSPORT_EMISSION_FACTORS
+from ...data.a.materials_a4 import PRESET_A4_SCENARIOS, TRANSPORT_EMISSION_FACTORS_ROAD, TRANSPORT_EMISSION_FACTORS_SEA,get_a4_preset
 from ...models import EmbodiedCarbon
 from typing import Dict, Any  # import typing helpers
 
@@ -7,38 +7,44 @@ def calculate_a4_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
 
     if instance is None:
         raise ValueError("instance is required")
-    
+
     product_type = getattr(instance, "product_type", None)
-    total_weight_kg = getattr(instance, "weight_kg", None)
-    location_of_factory = getattr(instance, "location_of_factory", "overseas")  # default to overseas
-    region_of_use = getattr(instance, "region_of_use", "australia")
+    weight_kg = getattr(instance, "weight_kg", None)
+    location_of_use = getattr(instance, "location_of_use", None)
+    preset_key = getattr(instance, "location_of_use", None)
+
 
     if product_type is None:
         raise ValueError("instance.product_type is required")
-    if total_weight_kg is None:
+    if weight_kg is None:
         raise ValueError("instance.weight_kg is required")
-    
-# For now, assume overseas manufacture if location is not very specific
-    preset_key = "australia_nz_globally_manufactured_asia"
-    transport_scenario = PRESET_A4_SCENARIOS.get(preset_key)
-    if not transport_scenario:
-        raise ValueError(f"No transport scenario for key '{preset_key}'")
-    
-    road_km = transport_scenario.get("road_km", 0)
-    sea_km = transport_scenario.get("sea_km", 0)
-    
-    # Get emission factors
-    road_factor = TRANSPORT_EMISSION_FACTORS["A4_road"]["value_kgCO2e_per_tkm"]
-    sea_factor = TRANSPORT_EMISSION_FACTORS["A4_sea"]["value_kgCO2e_per_tkm"]
-    
-    # Convert weight to tons
-    weight_t = total_weight_kg / 1000.0
-    
-    # Calculate emissions
-    a4_road_kgco2e = weight_t * road_km * road_factor
-    a4_sea_kgco2e = weight_t * sea_km * sea_factor
-    total_a4_kgco2e = a4_road_kgco2e + a4_sea_kgco2e
-    
+    weight_t = float(weight_kg) / 1000.0
+
+
+    scenario = get_a4_preset(preset_key)
+    road_km = scenario["road_km"]
+    sea_km = scenario["sea_km"]
+
+    if preset_key in [
+            "australia_within_state_manufactured",
+            "new_zealand_within_region_manufactured",
+            "new_zealand_nationally_manufactured",
+            "australia_nationally_manufactured"
+        ]:
+            distance_factor = road_km * TRANSPORT_EMISSION_FACTORS_ROAD
+    else:
+            distance_factor = (road_km * TRANSPORT_EMISSION_FACTORS_ROAD) + (sea_km * TRANSPORT_EMISSION_FACTORS_SEA)
+
+    total_a4= weight_t * distance_factor
+
+
     return {
-        "total_a4_kgco2e": total_a4_kgco2e,
+        "total_a4_kgco2e": total_a4,
+        "total_a4": total_a4,
+        "product": product_type,
+        "weight_kg": weight_kg,
+        "location_of_use": location_of_use,
+        "preset_key": preset_key,
+        "road_km": road_km,
+        "sea_km": sea_km,
     }

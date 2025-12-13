@@ -29,7 +29,7 @@ def calculate_c3_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
 
     # determine category and distance
     c3_carbon_factor = ELECTRICITY_CARBON_FACTORS.get(location)
-    c3 = energy_kwh_per_unit * c3_carbon_factor
+    total_c3 = energy_kwh_per_unit * c3_carbon_factor
     return {
-        "c3_kgco2e": c3,
+        "total_c3": total_c3,
     }

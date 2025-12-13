@@ -23,8 +23,13 @@ class EmbodiedCarbonList(APIView):
         weight_kg = data.get("weight_kg")
         electricity_usage_kwh = data.get("electricity_usage_kwh")
         location_of_factory = data.get("location_of_factory")
+        lifetime_years = data.get("lifetime_years", None)
+        refrigerant_used = data.get("refrigerant_used", None)
+        refrigerant_charge_kg = data.get("refrigerant_charge_kg", None)
+        refrigerant_leakage_rate_pct_per_year = data.get("refrigerant_leakage_rate_pct_per_year", None)
+        location_of_use = data.get("location_of_use", None)
         # Use serializer to validate and persist minimal model (product_type + weight_kg)
-        serializer = EmbodiedCarbonSerializer(data={"product_type": product_type, "weight_kg": weight_kg, "electricity_usage_kwh": electricity_usage_kwh, "location_of_factory": location_of_factory})
+        serializer = EmbodiedCarbonSerializer(data={"product_type": product_type, "weight_kg": weight_kg, "electricity_usage_kwh": electricity_usage_kwh, "location_of_factory": location_of_factory, "lifetime_years": lifetime_years, "refrigerant_used": refrigerant_used, "refrigerant_charge_kg": refrigerant_charge_kg, "refrigerant_leakage_rate_pct_per_year": refrigerant_leakage_rate_pct_per_year, "location_of_use": location_of_use})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         instance = serializer.save()
@@ -43,16 +48,21 @@ class EmbodiedCarbonList(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)  # return error response
 
         # Build simplified result format: a1, a2, a3, a4 and a1_to_a4_total
-        a1_val = calculation_total.get("a1_details", {}).get("a1_kgco2e", 0.0)
-        a2_val = calculation_total.get("a2_details", {}).get("a2_kgco2e", 0.0)
-        a3_val = calculation_total.get("a3_details", {}).get("a3_kgco2e", 0.0)
-        a4_val = calculation_total.get("a4_details", {}).get("a4_kgco2e", 0.0)
+        a1_val = calculation_total.get("a1_details")
+        a2_val = calculation_total.get("a2_details")
+        a3_val = calculation_total.get("a3_details")
+        a4_val = calculation_total.get("a4_details")
         a1_to_a4_total = a1_val + a2_val + a3_val + a4_val
-        c2_val = calculation_total.get("c2_details", {}).get("c2_kgco2e", 0.0)
-        c3_val = calculation_total.get("c3_details", {}).get("c3_kgco2e", 0.0)
-        c4_val = calculation_total.get("c4_details", {}).get("c4_kgco2e", 0.0)
+        c2_val = calculation_total.get("c2_details")
+        c3_val = calculation_total.get("c3_details")
+        c4_val = calculation_total.get("c4_details")
         c2_to_c4_total = c2_val + c3_val + c4_val   
         return Response({
+            lifetime_years: lifetime_years,
+            refrigerant_used: refrigerant_used,
+            refrigerant_charge_kg: refrigerant_charge_kg,
+            refrigerant_leakage_rate_pct_per_year: refrigerant_leakage_rate_pct_per_year,
+            location_of_use: location_of_use,   
             "a1": a1_val,
             "a2": a2_val,
             "a3": a3_val,

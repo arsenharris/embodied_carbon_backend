@@ -31,8 +31,8 @@ def calculate_c4_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     else:
         landfill_fraction = float(landfill_pct) / 100.0
 
-    c4_kgco2e = float(weight_kg) * landfill_factor * landfill_fraction
+    total_c4 = float(weight_kg) * landfill_factor * landfill_fraction
 
     return {
-        "c4_kgco2e": c4_kgco2e,
+        "total_c4": total_c4,
     }

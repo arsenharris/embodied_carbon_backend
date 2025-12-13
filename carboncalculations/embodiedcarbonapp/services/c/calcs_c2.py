@@ -34,7 +34,7 @@ def calculate_c2_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
         category_key = next(iter(CATEGORY_PRESETS))
     distance_km = CATEGORY_PRESETS[category_key].get("c2_distance_km", 0)
     weight_t = float(weight_kg) / 1000.0  # convert kg to tonnes
-    c2 = weight_t * float(distance_km) * TRANSPORT_EMISSION_FACTOR_C2  
+    total_c2 = weight_t * float(distance_km) * TRANSPORT_EMISSION_FACTOR_C2  
     return {
-        "c2_kgco2e": c2,
+        "total_c2": total_c2,
     }
