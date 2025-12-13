@@ -62,21 +62,13 @@ def calculate_a1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:  # c
         total_a1 += material_a1  # accumulate total A1
 
     remaining_weight = max(0.0, float(total_weight_kg) - total_weight_accounted)  # compute any unaccounted remaining weight
-    if remaining_weight > 0.0:  # if there is remaining weight, assign conservatively to steel
-        # choose fallback material:
-        # - if total_percent is between 95% and 100% (inclusive within tolerance),
-        #   attribute remaining mass to stainless_steel; otherwise use steel.
-        fallback_material = (
-            "stainless_steel"
-            if (total_percent >= 95.0 - 0.0001 and total_percent <= 100.0001)
-            else "steel"
-        )
-        remaining_coeff = float(MATERIAL_COEFFS.get(fallback_material, MATERIAL_COEFFS.get("steel", 0.0)))
-        remaining_a1 = remaining_weight * remaining_coeff  # compute A1 for remaining weight
-        # add remaining mass to the chosen material entry (merge if key already present)
-        weights[fallback_material] = weights.get(fallback_material, 0.0) + remaining_weight
-        a1_components[fallback_material] = a1_components.get(fallback_material, 0.0) + remaining_a1
-        total_a1 += remaining_a1  # add remaining A1 to total
+    if remaining_weight > 0.0:
+        # Attribute any small remaining mass to `steel` (merge with existing steel entry)
+        steel_coeff = float(MATERIAL_COEFFS.get("steel", 0.0))
+        remaining_a1 = remaining_weight * steel_coeff
+        weights["steel"] = weights.get("steel", 0.0) + remaining_weight
+        a1_components["steel"] = a1_components.get("steel", 0.0) + remaining_a1
+        total_a1 += remaining_a1
 
     return {  # return structured result
         "total_a1": total_a1,  # total A1 embodied carbon (kgCO2e)
