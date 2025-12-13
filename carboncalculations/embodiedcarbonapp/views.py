@@ -42,13 +42,27 @@ class EmbodiedCarbonList(APIView):
         except Exception as exc:  # if calculation fails
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)  # return error response
 
-        return Response({  # return created instance info plus calculation result
-            "id": instance.id,  # saved record id
-            "product_type": instance.product_type,  # echo product type
-            "weight_kg": instance.weight_kg,  # echo weight
-            "electricity_usage_kwh": instance.electricity_usage_kwh,  # echo electricity usage
-            "location_of_factory": instance.location_of_factory,  # echo factory location
-            "calculation_total": calculation_total,  # full lifecycle calculation dict
+        # Build simplified result format: a1, a2, a3, a4 and a1_to_a4_total
+        a1_val = calculation_total.get("a1_details", {}).get("a1_kgco2e", 0.0)
+        a2_val = calculation_total.get("a2_details", {}).get("a2_kgco2e", 0.0)
+        a3_val = calculation_total.get("a3_details", {}).get("a3_kgco2e", 0.0)
+        a4_val = calculation_total.get("a4_details", {}).get("a4_kgco2e", 0.0)
+        a1_to_a4_total = a1_val + a2_val + a3_val + a4_val
+        c2_val = calculation_total.get("c2_details", {}).get("c2_kgco2e", 0.0)
+        c3_val = calculation_total.get("c3_details", {}).get("c3_kgco2e", 0.0)
+        c4_val = calculation_total.get("c4_details", {}).get("c4_kgco2e", 0.0)
+        c2_to_c4_total = c2_val + c3_val + c4_val   
+        return Response({
+            "a1": a1_val,
+            "a2": a2_val,
+            "a3": a3_val,
+            "a4": a4_val,
+            "a1_to_a4_total": a1_to_a4_total,
+            "c2": c2_val,
+            "c3": c3_val,
+            "c4": c4_val,
+            "c2_to_c4_total": c2_to_c4_total,
+            "total_embodied_carbon": calculation_total.get("total_embodied_carbon", 0.0),
         }, status=status.HTTP_201_CREATED)
 
 
