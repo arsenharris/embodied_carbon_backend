@@ -60,22 +60,21 @@ class EmbodiedCarbonList(APIView):
         b3_stage = (a1_to_a4_total*0.1)+(c2_to_c4_total*0.1)
         buffer_factor=1.3
         return Response({
-            lifetime_years: lifetime_years,
-            refrigerant_used: refrigerant_used,
-            refrigerant_charge_kg: refrigerant_charge_kg,
-            refrigerant_leakage_rate_pct_per_year: refrigerant_leakage_rate_pct_per_year,
-            location_of_use: location_of_use,   
             "a1": a1_val,
             "a2": a2_val,
             "a3": a3_val,
             "a4": a4_val,
             "a1_to_a4_total": a1_to_a4_total,
-            "b3": b3_stage,
             "c2": c2_val,
             "c3": c3_val,
             "c4": c4_val,
             "c2_to_c4_total": c2_to_c4_total,
-            "with buffer factor":(a1_to_a4_total+c2_to_c4_total+b3_stage)*buffer_factor,
+            "b3": b3_stage,
+            "with_buffer_factor": (a1_to_a4_total + c2_to_c4_total + b3_stage) * buffer_factor,
+            "b1": calculation_total.get("b1_details"),
+            "c1": calculation_total.get("c1_details"),
+            "b1andc1": calculation_total.get("b1_details") + calculation_total.get("c1_details"),
+            "total_embodied_carbon": ((a1_to_a4_total + c2_to_c4_total + b3_stage) * buffer_factor)+ calculation_total.get("b1_details") + calculation_total.get("c1_details"),
         }, status=status.HTTP_201_CREATED)
 
 
