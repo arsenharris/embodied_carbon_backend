@@ -3,7 +3,7 @@ CATEGORY_PRESETS = {
         "label": "Category 1 - Low complexity",  # human readable label
         "examples": [  # example products to help mapping
             "pipes", "cables", "ducts", "valves", "fire alarm devices", "access control",
-            "ductwork", "cable containment", "electrical outlets", "busbars",
+            "cable containment", "electrical outlets", "busbars","ductwork", "diffusers",
         ],
         "a2_distance_km": 1500,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 1,  # default rounds of manufacture
@@ -12,7 +12,7 @@ CATEGORY_PRESETS = {
     "category_2_medium_complexity": {  # Category 2: medium complexity
         "label": "Category 2 - Medium complexity",
         "examples": [
-            "pumps", "luminaires", "control panels", "lighting control devices", "sensors", "thermal store",
+            "pumps", "luminaires", "control panels", "lighting control devices", "sensors", "thermal store", "bms controller","fan",
         ],
         "a2_distance_km": 3000,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 2,  # default rounds of manufacture
@@ -21,7 +21,7 @@ CATEGORY_PRESETS = {
     "category_3_high_complexity": {  # Category 3: high complexity
         "label": "Category 3 - High complexity",
         "examples": [
-            "air handling units", "ahu", "ahu unit", "Heat pump", "boilers", "heat interface units", "MVHR", "switchgear", "UPS",
+            "air handling units", "ahu", "chiller", "fcu", "cooling tower", "ducted split", "ahu unit", "heat pump", "boilers", "heat interface units", "MVHR", "switchgear", "UPS","VAV","VAV Box", "VRF Indoor Unit", "VRF Outdoor Unit",
         ],
         "a2_distance_km": 6000,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 4,  # default rounds of manufacture
@@ -54,7 +54,6 @@ ELECTRICITY_CARBON_FACTORS = {
     "thailand": 0.48,                       # Thailand
     "asia": 0.84,                           # Asia regional average
     "middle_east": 0.68,                    # Middle East regional average
-
     # Backwards-compatible keys (optional)
     "China": 0.54,                          # legacy key used elsewhere
     "Australia_average": 0.81,              # legacy key used elsewhere

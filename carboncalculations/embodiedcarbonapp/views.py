@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializer import EmbodiedCarbonSerializer
 from .data.a.materials_a1 import MATERIAL_COEFFS, PRESET_PERCENTAGES
+from .data.a.materials_a3 import ELECTRICITY_CARBON_FACTORS
 from django.apps import apps
 from rest_framework import status
 from .services.calcs_total import calculate_total_embodied_carbon
@@ -72,3 +73,13 @@ class MaterialsPresets(APIView):
             PRESET_PERCENTAGES[product_type] = materials
 
             return Response({"message": "Saved successfully"}, status=200)
+
+
+class MaterialsElectricityFactors(APIView):
+    """Return electricity carbon factors (ELECTRICITY_CARBON_FACTORS) for A3.
+
+    Frontend should call this to populate a dropdown so users can choose the
+    manufacturing electricity carbon factor (location key).
+    """
+    def get(self, request):
+        return Response(ELECTRICITY_CARBON_FACTORS, status=status.HTTP_200_OK)
