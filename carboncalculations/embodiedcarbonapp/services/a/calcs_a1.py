@@ -39,6 +39,9 @@ def calculate_a1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:  # c
 
     if total_percent > 100.0001:  # small tolerance for floating-point
         raise ValueError(f"Preset percentages sum to {total_percent:.2f}% (>100%) for product_type '{product_type}'")
+    # Enforce a sensible minimum coverage to avoid large unspecified remaining mass
+    if total_percent < 95.0 - 0.0001:
+        raise ValueError(f"Preset percentages sum to {total_percent:.2f}% (<95%) for product_type '{product_type}'")
 
     weights: Dict[str, float] = {}  # will hold computed material weights (kg)
     a1_components: Dict[str, float] = {}  # will hold computed material embodied carbon (kg CO2e)
@@ -60,10 +63,19 @@ def calculate_a1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:  # c
 
     remaining_weight = max(0.0, float(total_weight_kg) - total_weight_accounted)  # compute any unaccounted remaining weight
     if remaining_weight > 0.0:  # if there is remaining weight, assign conservatively to steel
-        remaining_coeff = float(MATERIAL_COEFFS.get("steel", 0.0))  # steel coefficient fallback
+        # choose fallback material:
+        # - if total_percent is between 95% and 100% (inclusive within tolerance),
+        #   attribute remaining mass to stainless_steel; otherwise use steel.
+        fallback_material = (
+            "stainless_steel"
+            if (total_percent >= 95.0 - 0.0001 and total_percent <= 100.0001)
+            else "steel"
+        )
+        remaining_coeff = float(MATERIAL_COEFFS.get(fallback_material, MATERIAL_COEFFS.get("steel", 0.0)))
         remaining_a1 = remaining_weight * remaining_coeff  # compute A1 for remaining weight
-        weights["remaining"] = remaining_weight  # store remaining weight
-        a1_components["remaining"] = remaining_a1  # store remaining A1 contribution
+        # add remaining mass to the chosen material entry (merge if key already present)
+        weights[fallback_material] = weights.get(fallback_material, 0.0) + remaining_weight
+        a1_components[fallback_material] = a1_components.get(fallback_material, 0.0) + remaining_a1
         total_a1 += remaining_a1  # add remaining A1 to total
 
     return {  # return structured result
