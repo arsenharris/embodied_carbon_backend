@@ -1,20 +1,38 @@
-from ...data.c.materials_c4 import END_OF_LIFE_PRESETS, LANDFILL_EMISSION_FACTOR
+from ...data.c.materials_c4 import LANDFILL_EMISSION_FACTOR, PRODUCT_TYPE_TO_COMPLEXITY
 from typing import Dict, Any  # import typing helpers
 from ...models import EmbodiedCarbon
 
 
-def calculate_c4_from_instance(weight_kg: float, landfill_pct: float = None, landfill_factor: float = None) -> float:
-    """Calculate C4 landfill emissions (kg CO2e).
+def calculate_c4_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
+    """Calculate C4 (end-of-life landfill) emissions (kg CO2e).
 
-    weight_kg: total product mass in kg
-    landfill_pct: percentage (0-100) of mass sent to landfill
-    landfill_factor: kg CO2e per kg waste (if None, uses materials_c4.LANDFILL_EMISSION_FACTOR)
+    Uses `resolve_end_of_life` to determine an appropriate `landfill_pct`
+    for the given `instance.product_type`. If no preset is found the
+    landfill percentage defaults to 0. The landfill emission factor is
+    taken from `LANDFILL_EMISSION_FACTOR`.
     """
+    if instance is None:
+        raise ValueError("instance is required")
+
+    product_type = getattr(instance, "product_type", None)  # get product type from model
+    weight_kg = getattr(instance, "weight_kg", None)        # get weight (kg) from model
+    if product_type is None:
+        raise ValueError("instance.product_type is required")
     if weight_kg is None:
-        return 0.0
+        raise ValueError("instance.weight_kg is required")
+    landfill_factor = float(LANDFILL_EMISSION_FACTOR)  # kgCO2e / kg waste
 
-    if landfill_factor is None:
-        landfill_factor = LANDFILL_EMISSION_FACTOR
+    # lookup mapping case-insensitively; presets store percentages (e.g. 50 == 50%)
+    landfill_pct = PRODUCT_TYPE_TO_COMPLEXITY.get(product_type.strip().lower())
 
-    mass_to_landfill_kg = float(weight_kg) * float(landfill_factor)
-    return mass_to_landfill_kg
+    # If not found, default to 0% (no landfill emissions). Convert percent -> fraction.
+    if landfill_pct is None:
+        landfill_fraction = 0.0
+    else:
+        landfill_fraction = float(landfill_pct) / 100.0
+
+    c4_kgco2e = float(weight_kg) * landfill_factor * landfill_fraction
+
+    return {
+        "c4_kgco2e": c4_kgco2e,
+    }

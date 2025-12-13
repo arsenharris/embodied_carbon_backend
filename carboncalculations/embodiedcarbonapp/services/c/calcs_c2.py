@@ -21,6 +21,7 @@ def calculate_c2_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
 
     product_type = getattr(instance, "product_type", None)  # get product type from model
     weight_kg = getattr(instance, "weight_kg", None)        # get weight (kg) from model
+    
     if product_type is None:
         raise ValueError("instance.product_type is required")
     if weight_kg is None:
@@ -32,11 +33,8 @@ def calculate_c2_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
         # fallback to the first preset in the dict
         category_key = next(iter(CATEGORY_PRESETS))
     distance_km = CATEGORY_PRESETS[category_key].get("c2_distance_km", 0)
-
-    # convert kg -> tonnes
-    weight_t = float(weight_kg) / 1000.0
-
-    c2 = TRANSPORT_EMISSION_FACTOR_C2 * weight_t * float(distance_km)
+    weight_t = float(weight_kg) / 1000.0  # convert kg to tonnes
+    c2 = weight_t * float(distance_km) * TRANSPORT_EMISSION_FACTOR_C2  
     return {
         "c2_kgco2e": c2,
     }

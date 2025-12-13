@@ -1,46 +1,74 @@
 END_OF_LIFE_PRESETS = {
-	# Table entries (product type -> recycle / landfill)
-	"heat generation equipment": {"recycle_pct": 70.0, "landfill_pct": 30.0},
-	"pipes": {"recycle_pct": 90.0, "landfill_pct": 10.0},
-	"ventilation systems": {"recycle_pct": 40.0, "landfill_pct": 60.0},
-	"radiator": {"recycle_pct": 80.0, "landfill_pct": 20.0},
-	"wire cable": {"recycle_pct": 50.0, "landfill_pct": 50.0},
-
-	# Common generic keys to help lookups from product_type labels used elsewhere
-	"ahu": {"recycle_pct": 40.0, "landfill_pct": 60.0},
-	"chiller": {"recycle_pct": 40.0, "landfill_pct": 60.0},
-	"pipes_generic": {"recycle_pct": 90.0, "landfill_pct": 10.0},
+	"access control device": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"ahu": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"boiler": {"recycle_pct": 70.0, "landfill_pct": 30},
+	"bms controller": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"busbar": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"cable containment": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"cables": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"chiller": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"cooling tower": {"recycle_pct": 70.0, "landfill_pct": 30},
+	"control panel": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"diffuser": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"ducted split": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"ductwork": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"electrical outlet": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"fan": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"fcu": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"fire alarm device": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"heat generation equipment": {"recycle_pct": 70.0, "landfill_pct": 30},
+	"heat interface unit (hiu)": {"recycle_pct": 70.0, "landfill_pct": 30},
+	"heat pump": {"recycle_pct": 70.0, "landfill_pct": 30},
+	"lighting control device": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"luminaire  led": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"mvhr unit": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"pipe  copper": {"recycle_pct": 90.0, "landfill_pct": 10},
+	"pipe  pvc": {"recycle_pct": 90.0, "landfill_pct": 10},
+	"pipe  steel": {"recycle_pct": 90.0, "landfill_pct": 10},
+	"pipes": {"recycle_pct": 90.0, "landfill_pct": 10},
+	"pipes  pex": {"recycle_pct": 90.0, "landfill_pct": 10},
+	"pump": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"radiator": {"recycle_pct": 80.0, "landfill_pct": 20},
+	"sensors": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"switchgear": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"thermal store": {"recycle_pct": 70.0, "landfill_pct": 30},
+	"ups": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"valves": {"recycle_pct": 50.0, "landfill_pct": 50},
+	"vav box": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"ventilation systems": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"vrf indoor unit": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"vrf outdoor unit": {"recycle_pct": 40.0, "landfill_pct": 60},
+	"wire cable": {"recycle_pct": 50.0, "landfill_pct": 50},
 }
 
 
-def resolve_end_of_life(product_type: str):
-	"""Return end-of-life preset for a given product_type string.
+PRODUCT_TYPE_TO_COMPLEXITY = {}
+for product_type, preset in END_OF_LIFE_PRESETS.items():
+    PRODUCT_TYPE_TO_COMPLEXITY[product_type.lower()] = preset["landfill_pct"]
 
-	Matching is case-insensitive and will try exact keys, substring matches,
-	and simple normalized lookups. Returns a dict with `recycle_pct` and
-	`landfill_pct` or None if not found.
-	"""
-	if not product_type:
-		return None
+def resolve_complexity_category(product_type: str) -> str | None:
+    """
+    Return the CATEGORY_PRESETS key for a given product_type string.
 
-	pt = product_type.strip().lower()
+    Lookup order:
+    1) exact match (case-insensitive) against example entries
+    2) substring match (case-insensitive) where product_type contains an example or vice-versa
+    3) None if no match found
+    """
+    if not product_type:
+        return None
+    pt = product_type.strip().lower()
 
-	# direct
-	if pt in END_OF_LIFE_PRESETS:
-		return END_OF_LIFE_PRESETS[pt]
+    # exact lookup
+    if pt in PRODUCT_TYPE_TO_COMPLEXITY:
+        return PRODUCT_TYPE_TO_COMPLEXITY[pt]
 
-	# try substring match
-	for key in END_OF_LIFE_PRESETS:
-		if key in pt or pt in key:
-			return END_OF_LIFE_PRESETS[key]
+    # substring/partial match against examples
+    for ex, cat_key in PRODUCT_TYPE_TO_COMPLEXITY.items():
+        if pt == ex or pt in ex or ex in pt:
+            return cat_key
 
-	# fallback: try simple token-based matches
-	tokens = pt.split()
-	for token in tokens:
-		if token in END_OF_LIFE_PRESETS:
-			return END_OF_LIFE_PRESETS[token]
-
-	return None
+    return None
 
 	# Table 2.11 Landfill emission factor (kg CO2e per kg waste)
 	# Source: Australian Government Department of Industry, Science, Energy and Resources (2021), Table 49

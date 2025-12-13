@@ -2,30 +2,34 @@ from ...data.c.materials_c3 import ELECTRICITY_CARBON_FACTORS
 from typing import Dict, Any  # import typing helpers
 from ...models import EmbodiedCarbon
 
+
 def calculate_c3_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
-    """Calculate C3 (waste processing) emissions (kg CO2e).
+    """Calculate C3 (waste processing / electricity use) emissions (kg CO2e).
 
     Args:
-    instance: EmbodiedCarbon model instance.
+    product_weight_kg: product mass in kilograms.
+    product_type: optional product type/name used to choose a category preset
+        (will search `CATEGORY_PRESETS[..]["examples"]`). If not provided or
+        not found, the first category preset will be used as a fallback.
+    transport_factor: emission factor in kgCO2e / (t·km). If not provided,
+        `TRANSPORT_EMISSION_FACTOR_C2` is used.
 
     Returns:
-    Dict[str, Any]: Dictionary with C3 emissions in kg CO2e.
+    float: C3 emissions in kg CO2e.
     """
     if instance is None:
         raise ValueError("instance is required")
 
-    weight_kg = getattr(instance, "weight_kg", None)        # get weight (kg) from model
-    electricity_kwh_per_kg = getattr(instance, "c3_electricity_kwh_per_kg", None)  # get electricity use (kWh/kg) from model
+    product_type = getattr(instance, "product_type", None)  # get product type from model
+    energy_kwh_per_unit = getattr(instance, "electricity_usage_kwh", None)
+    location = getattr(instance, "location_of_factory", None)
 
-    if weight_kg is None:
-        raise ValueError("instance.weight_kg is required")
-    if electricity_kwh_per_kg is None:
-        raise ValueError("instance.c3_electricity_kwh_per_kg is required")
+    if product_type is None:
+        raise ValueError("instance.product_type is required")
 
-    electricity_factor = ELECTRICITY_CARBON_FACTORS.get("grid_average", 0.0)  # default to grid average
-
-    c3_kgco2e = float(electricity_kwh_per_kg) * float(electricity_factor)
-
+    # determine category and distance
+    c3_carbon_factor = ELECTRICITY_CARBON_FACTORS.get(location)
+    c3 = energy_kwh_per_unit * c3_carbon_factor
     return {
-        "c3_kgco2e": c3_kgco2e,
+        "c3_kgco2e": c3,
     }

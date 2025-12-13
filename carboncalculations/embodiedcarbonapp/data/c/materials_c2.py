@@ -59,6 +59,9 @@ def resolve_complexity_category(product_type: str) -> str | None:
             return cat_key
 
     return None
+
+
+
 # #Table 2.4 Transport emissions factors (Table 4.8 in TM65)
 TRANSPORT_EMISSION_FACTOR_C2 = 0.133  # kgCO2e / t·km (BEIS average HGV)
 

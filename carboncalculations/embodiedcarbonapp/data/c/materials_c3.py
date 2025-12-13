@@ -1,3 +1,4 @@
+#Complexity categories: transport distances (A2), rounds of manufacturing (A3) and transport to waste processing facility (C2) (supersedes Table 4.9 in TM65)
 ELECTRICITY_CARBON_FACTORS = {
     "new_south_wales_and_act": 0.85,        # New South Wales & Australian Capital Territory
     "victoria": 1.00,                       # Victoria
@@ -21,3 +22,4 @@ ELECTRICITY_CARBON_FACTORS = {
     "China": 0.54,                          # legacy key used elsewhere
     "Australia_average": 0.81,              # legacy key used elsewhere
 }
+

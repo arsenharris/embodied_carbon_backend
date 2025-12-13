@@ -23,17 +23,17 @@ def calculate_total_embodied_carbon(instance) -> Dict[str, Any]:
     c3_result = calculate_c3_from_instance(instance)  # calculate C3 stage   
     c4_result = calculate_c4_from_instance(instance)  # calculate C4 stage   
 
-    total_a1 = a1_result.get("a1_kgco2e", 0.0)  # extract total A1 value
-    total_a2 = a2_result.get("a2_kgco2e", 0.0)  # extract total A2 value
-    total_a3 = a3_result.get("a3_kgco2e", 0.0)  # extract total A3 value
-    total_a4 = a4_result.get("a4_kgco2e", 0.0)  # extract total A4 value
+    total_a1 = float(a1_result.get("total_a1", 0.0))  # extract total A1 value
+    total_a2 = float(a2_result.get("a2_kgco2e", 0.0))  # extract total A2 value
+    total_a3 = float(a3_result.get("a3_kgco2e", 0.0))  # extract total A3 value
+    total_a4 = float(a4_result.get("total_a4_kgco2e", 0.0))  # extract total A4 value
 
-    total_c2 = c2_result.get("c2_kgco2e", 0.0)  # extract total C2 value
-    total_c3 = a3_result.get("c3_kgco2e", 0.0)  # extract total C3 value
-    total_c4 = a4_result.get("c4_kgco2e", 0.0)  # extract total C4 value
+    total_c2 = float(c2_result.get("c2_kgco2e", 0.0))  # extract total C2 value
+    total_c3 = float(c3_result.get("c3_kgco2e", 0.0))  # extract total C3 value
+    total_c4 = float(c4_result.get("c4_kgco2e", 0.0))  # extract total C4 value
 
 
-    total_embodied_carbon = total_a1 + total_a2 + total_a3 + total_a4 + total_c2 + total_c3 + total_c4       
+    total_embodied_carbon = total_a1 + total_a2 + total_a3 + total_a4 + total_c2 + total_c3 + total_c4
     return {
         "total_embodied_carbon": total_embodied_carbon,
         "a1_details": a1_result,
