@@ -57,6 +57,8 @@ class EmbodiedCarbonList(APIView):
         c3_val = calculation_total.get("c3_details")
         c4_val = calculation_total.get("c4_details")
         c2_to_c4_total = c2_val + c3_val + c4_val   
+        b3_stage = (a1_to_a4_total*0.1)+(c2_to_c4_total*0.1)
+        buffer_factor=1.3
         return Response({
             lifetime_years: lifetime_years,
             refrigerant_used: refrigerant_used,
@@ -68,11 +70,12 @@ class EmbodiedCarbonList(APIView):
             "a3": a3_val,
             "a4": a4_val,
             "a1_to_a4_total": a1_to_a4_total,
+            "b3": b3_stage,
             "c2": c2_val,
             "c3": c3_val,
             "c4": c4_val,
             "c2_to_c4_total": c2_to_c4_total,
-            "total_embodied_carbon": calculation_total.get("total_embodied_carbon", 0.0),
+            "with buffer factor":(a1_to_a4_total+c2_to_c4_total+b3_stage)*buffer_factor,
         }, status=status.HTTP_201_CREATED)
 
 

@@ -32,7 +32,10 @@ def calculate_total_embodied_carbon(instance) -> Dict[str, Any]:
     total_c3 = float(c3_result.get("total_c3", 0.0))  # extract total C3 value
     total_c4 = float(c4_result.get("total_c4", 0.0))  # extract total C4 value
 
+    
     total_embodied_carbon = total_a1 + total_a2 + total_a3 + total_a4 + total_c2 + total_c3 + total_c4
+    
+    
     return {
         "total_embodied_carbon": total_embodied_carbon,
         "a1_details": total_a1,
