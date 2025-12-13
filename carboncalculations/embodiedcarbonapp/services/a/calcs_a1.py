@@ -21,12 +21,24 @@ def calculate_a1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:  # c
     if total_weight_kg is None:  # ensure weight exists
         raise ValueError("instance.weight_kg is required")  # error if missing
     
-    # Try exact lookup first, then fallback to case-insensitive mapping
-    preset_percentages = PRESET_PERCENTAGES.get(product_type)
+    # Priority: if the instance has an in-memory override (set by the view), use that
+    preset_percentages = getattr(instance, 'materials_override', None)
+    # Try exact lookup first, then fallback to case-insensitive mapping from built-in presets
+    if not preset_percentages:
+        preset_percentages = PRESET_PERCENTAGES.get(product_type)
     if not preset_percentages:
         preset_percentages = PRESET_PERCENTAGES_NORMALIZED.get(product_type.lower())
     if not preset_percentages:
         raise ValueError(f"No preset percentages for product_type '{product_type}'")  # error if missing
+
+    # Validate preset percentages: ensure they are numeric and do not exceed 100% total
+    try:
+        total_percent = sum(float(v or 0.0) for v in preset_percentages.values())
+    except Exception:
+        raise ValueError(f"Invalid preset percentages for product_type '{product_type}'; all percentages must be numeric")
+
+    if total_percent > 100.0001:  # small tolerance for floating-point
+        raise ValueError(f"Preset percentages sum to {total_percent:.2f}% (>100%) for product_type '{product_type}'")
 
     weights: Dict[str, float] = {}  # will hold computed material weights (kg)
     a1_components: Dict[str, float] = {}  # will hold computed material embodied carbon (kg CO2e)

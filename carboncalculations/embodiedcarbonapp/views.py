@@ -29,6 +29,13 @@ class EmbodiedCarbonList(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         instance = serializer.save()
 
+        # If frontend provided a materials override in the request payload, attach
+        # it to the instance so calculation services can use it for this run.
+        materials_override = data.get("materials_override") or data.get("materials")
+        if materials_override and isinstance(materials_override, dict):
+            # attach as a temporary attribute (not persisted) used by calculation
+            setattr(instance, 'materials_override', materials_override)
+
         # Run the calculation based on the saved model instance (service reads presets)
         try:
             calculation_total = calculate_total_embodied_carbon(instance)  # compute full lifecycle totals
