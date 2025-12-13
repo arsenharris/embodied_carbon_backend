@@ -1,5 +1,5 @@
 
-#Table 2.3 Embodied carbon coefficients (Table 2.1 in TM65)
+#Table 2.3 Embodied carbon coefficients (Table 2.1 in TM65) Embodied carbon coefficient (kgCO2e/kg)*
 MATERIAL_COEFFS = {
     "abs": 3.76,
     "aluminium": 13.1,
@@ -27,6 +27,7 @@ MATERIAL_COEFFS = {
     "printed_wiring_board_mixed_mounted": 154.0,
 }
 
+# This is for a1 proportion of material.User can override on front end if they want to change the default percentages.
 PRESET_PERCENTAGES = {
     "AHU": {
         "steel": 45, "aluminium": 15, "copper": 10,
@@ -297,6 +298,9 @@ PRESET_PERCENTAGES = {
         "rubber": 1,
     },
 }
+
+# Normalized mapping for case-insensitive lookups (keyed by lower-case product_type)
+PRESET_PERCENTAGES_NORMALIZED = {k.lower(): v for k, v in PRESET_PERCENTAGES.items()}
 
 
 

@@ -1,4 +1,4 @@
-from ...data.a.materials_a1 import MATERIAL_COEFFS, PRESET_PERCENTAGES
+from ...data.a.materials_a1 import MATERIAL_COEFFS, PRESET_PERCENTAGES, PRESET_PERCENTAGES_NORMALIZED
 from ...models import EmbodiedCarbon
 from typing import Dict, Any  # import typing helpers
 
@@ -21,8 +21,11 @@ def calculate_a1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:  # c
     if total_weight_kg is None:  # ensure weight exists
         raise ValueError("instance.weight_kg is required")  # error if missing
     
-    preset_percentages = PRESET_PERCENTAGES.get(product_type)  # look up preset percentages for this product type
-    if not preset_percentages:  # ensure preset exists for the product type
+    # Try exact lookup first, then fallback to case-insensitive mapping
+    preset_percentages = PRESET_PERCENTAGES.get(product_type)
+    if not preset_percentages:
+        preset_percentages = PRESET_PERCENTAGES_NORMALIZED.get(product_type.lower())
+    if not preset_percentages:
         raise ValueError(f"No preset percentages for product_type '{product_type}'")  # error if missing
 
     weights: Dict[str, float] = {}  # will hold computed material weights (kg)
@@ -52,11 +55,5 @@ def calculate_a1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:  # c
         total_a1 += remaining_a1  # add remaining A1 to total
 
     return {  # return structured result
-        "product_type": product_type,  # echo product type used
-        "total_weight_kg": float(total_weight_kg),  # echo total weight
-        "weights": weights,  # per-material weights in kg
-        "a1_components": a1_components,  # per-material embodied carbon in kgCO2e
-        "total_weight_accounted": total_weight_accounted,  # weight accounted by presets
-        "remaining_weight": remaining_weight,  # any remaining weight
         "total_a1": total_a1,  # total A1 embodied carbon (kgCO2e)
     }

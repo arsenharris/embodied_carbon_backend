@@ -40,12 +40,5 @@ def calculate_a4_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     total_a4_kgco2e = a4_road_kgco2e + a4_sea_kgco2e
     
     return {
-        "product_type": product_type,
-        "total_weight_kg": total_weight_kg,
-        "transport_scenario": preset_key,
-        "road_km": road_km,
-        "sea_km": sea_km,
-        "a4_road_kgco2e": a4_road_kgco2e,
-        "a4_sea_kgco2e": a4_sea_kgco2e,
         "total_a4_kgco2e": total_a4_kgco2e,
     }

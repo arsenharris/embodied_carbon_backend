@@ -44,9 +44,5 @@ def calculate_a2_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     a2_kgco2e = weight_tonnes * distance_km * emission_factor        # compute A2
 
     return {
-        "product_type": product_type,
-        "distance_km": distance_km,
-        "weight_tonnes": weight_tonnes,
-        "emission_factor_kg_per_t_km": emission_factor,
         "a2_kgco2e": a2_kgco2e,
     }  

@@ -28,10 +28,5 @@ def calculate_a3_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     a3_kgco2e = energy_kwh_per_unit * rounds_of_manufacture * carbon_factor
     
     return {
-        "product_type": product_type,
-        "energy_kwh_per_unit": energy_kwh_per_unit,
-        "rounds_of_manufacture": rounds_of_manufacture,
-        "manufacture_region": location,
-        "electricity_carbon_factor_kg_per_kwh": carbon_factor,
         "a3_kgco2e": a3_kgco2e,
     }
