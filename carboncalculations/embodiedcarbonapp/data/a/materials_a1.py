@@ -30,19 +30,22 @@ MATERIAL_COEFFS = {
 # This is for a1 proportion of material.User can override on front end if they want to change the default percentages.
 PRESET_PERCENTAGES = {
     "AHU": {
-        "steel": 45, "aluminium": 15, "copper": 10,
-        "plastics": 8, "insulation": 12,
-        "stainless_steel": 3, "electronic_components": 2,
-        "pvc": 2, "rubber": 2, "polyurethane_foam": 1,
+        "steel": 45, 
+        "aluminium": 15, 
+        "copper": 10,
+        "plastics": 8, 
+        "insulation": 12,
+        "stainless_steel": 3, 
+        "electronic_components": 2,
+        "pvc": 2, "rubber": 2, 
+        "polyurethane_foam": 1,
     },
 
     "Access Control Device": {
-        "plastics": 25,
-        "electronic_components": 35,
-        "printed_wiring_board_mixed_mounted": 20,
-        "copper": 10,
-        "steel": 5,
-        "aluminium": 5,
+        "plastics": 50,
+        "electronic_components": 30,
+        "printed_wiring_board_mixed_mounted": 10,
+        "stainless_steel": 5,
     },
 
     "BMS Controller": {
@@ -53,9 +56,12 @@ PRESET_PERCENTAGES = {
     },
 
     "Boiler": {
-        "steel": 60, "cast_iron": 20,
-        "copper": 5, "stainless_steel": 5,
-        "plastics": 3, "rubber": 2,
+        "steel": 60, 
+        "cast_iron": 20,
+        "copper": 5, 
+        "stainless_steel": 5,
+        "plastics": 3, 
+        "rubber": 2,
         "electronic_components": 3,
         "pvc": 2,
     },
@@ -66,7 +72,7 @@ PRESET_PERCENTAGES = {
         "plastics": 10,
     },
 
-    "Cable Containment": {  # tray, ladder
+    "Cable Containment": {
         "steel": 85,
         "aluminium": 10,
         "zinc": 5,
@@ -79,12 +85,13 @@ PRESET_PERCENTAGES = {
     },
 
     "Chiller": {
-        "steel": 40, "aluminium": 8, "copper": 10, "plastics": 8,
-        "stainless_steel": 6, "electronic_components": 3,
-        "printed_wiring_board_mixed_mounted": 2, "glass": 1, "rubber": 3,
-        "pvc": 4, "polyurethane_foam": 5, "polyethylene": 2, "polycarbonates": 3,
-        "polyamide": 1, "abs": 2, "zinc": 1, "ceramic": 0.5, "iron": 1,
-        "expanded_polystyrene": 0.5, "lithium": 0.1, "silicon": 0.2, "cast_iron": 0.5,
+        "steel": 65,
+        "aluminium": 15, 
+        "copper": 5, 
+        "plastics": 3,
+        "stainless_steel": 2, 
+        "electronic_components": 3,
+        "printed_wiring_board_mixed_mounted": 2, 
     },
 
     "Control Panel": {
@@ -96,28 +103,28 @@ PRESET_PERCENTAGES = {
     },
 
     "Cooling Tower": {
-        "plastics": 40,  # FRP ≈ plastics
-        "steel": 35,
+        "plastics": 40,
         "copper": 5,
-        "stainless_steel": 5,
+        "stainless_steel": 20,
         "rubber": 5,
-        "electronic_components": 2,
+        "electronic_components": 3,
         "polyurethane_foam": 3,
+        "polypropylene": 20,
     },
 
     "Ducted split": {
-        "steel": 30, "aluminium": 12, "copper": 9, "plastics": 12,
-        "stainless_steel": 4, "electronic_components": 3,
-        "printed_wiring_board_mixed_mounted": 2, "glass": 1, "rubber": 3,
-        "pvc": 5, "polyurethane_foam": 6, "polyethylene": 3, "polycarbonates": 3,
-        "polyamide": 1, "abs": 4, "zinc": 1, "ceramic": 0.5, "iron": 1,
-        "expanded_polystyrene": 0.5, "lithium": 0.1, "silicon": 0.2, "cast_iron": 0.5,
+        "steel": 40, 
+        "aluminium": 15, 
+        "copper": 8, 
+        "plastics": 22,
+        "stainless_steel": 7, 
+        "electronic_components": 3,
+        "printed_wiring_board_mixed_mounted": 2, 
     },
 
     "Ductwork": {
         "steel": 80,
         "insulation": 12,
-        "adhesive": 0,  # unused, but left as-is
         "pvc": 3,
         "rubber": 2,
         "polyurethane_foam": 3,
@@ -127,8 +134,6 @@ PRESET_PERCENTAGES = {
         "aluminium": 75,
         "steel": 15,
         "plastics": 5,
-        "rubber": 2,
-        "stainless_steel": 3,
     },
 
     "Electrical Outlet": {
@@ -149,10 +154,13 @@ PRESET_PERCENTAGES = {
     },
 
     "FCU": {
-        "steel": 40, "aluminium": 10, "copper": 20,
-        "plastics": 10, "insulation": 10,
-        "stainless_steel": 3, "electronic_components": 3,
-        "rubber": 2, "polyurethane_foam": 2,
+        "steel": 40,
+        "aluminium": 10, 
+        "copper": 20,
+        "plastics": 10, 
+        "insulation": 10,
+        "electronic_components": 3,
+        "polyurethane_foam": 2,
     },
 
     "Fire Alarm Device": {
@@ -208,31 +216,19 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 5,
     },
 
-    "Pipe  Copper": {
+    "Pipe ": {
         "copper": 90,
         "insulation": 10,
     },
 
-    "Pipe  PVC": {
-        "pvc": 95,
-        "plastics": 5,
-    },
-
-    "Pipe  Steel": {
-        "steel": 90,
-        "insulation": 10,
-    },
-
-    "Pipes  PEX": {
-        "plastics": 85,
-        "pvc": 10,
-        "polyethylene": 5,
-    },
-
     "Pump": {
-        "cast_iron": 55, "steel": 20, "copper": 10,
-        "stainless_steel": 5, "plastics": 5,
-        "electronic_components": 3, "rubber": 2,
+        "cast_iron": 55, 
+        "steel": 20, 
+        "copper": 10,
+        "stainless_steel": 5, 
+        "plastics": 5,
+        "electronic_components": 3, 
+        "rubber": 2,
     },
 
     "Sensors": {
@@ -261,10 +257,8 @@ PRESET_PERCENTAGES = {
     "UPS": {
         "steel": 40,
         "copper": 20,
-        "electronics": 0,   # unused key
         "electronic_components": 20,
         "plastics": 10,
-        "battery_cells": 0, # unused key
         "lithium": 10,
     },
     "Valves": {
@@ -285,16 +279,25 @@ PRESET_PERCENTAGES = {
     },
 
     "VRF Indoor Unit": {
-        "steel": 15, "aluminium": 10, "copper": 12,
-        "plastics": 30, "insulation": 20,
-        "stainless_steel": 3, "electronic_components": 5,
-        "pvc": 3, "rubber": 2,
+        "steel": 15, 
+        "aluminium": 10, 
+        "copper": 12,
+        "plastics": 30, 
+        "insulation": 20,
+        "stainless_steel": 3, 
+        "electronic_components": 5,
+        "pvc": 3, 
+        "rubber": 2,
     },
 
     "VRF Outdoor Unit": {
-        "steel": 50, "aluminium": 10, "copper": 20,
-        "plastics": 8, "stainless_steel": 4,
-        "electronic_components": 4, "printed_wiring_board_mixed_mounted": 3,
+        "steel": 50, 
+        "aluminium": 10, 
+        "copper": 20,
+        "plastics": 8, 
+        "stainless_steel": 2,
+        "electronic_components": 6, 
+        "printed_wiring_board_mixed_mounted": 3,
         "rubber": 1,
     },
 }
