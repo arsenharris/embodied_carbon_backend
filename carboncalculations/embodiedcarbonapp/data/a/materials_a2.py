@@ -4,7 +4,7 @@ CATEGORY_PRESETS = {
         "label": "Category 1 - Low complexity",  # human readable label
         "examples": [  # example products to help mapping
             "pipes", "cables", "ducts", "valves", "fire alarm devices", "access control",
-            "cable containment", "electrical outlets", "busbars","ductwork", "diffusers",
+            "cable containment", "electrical outlets", "busbar","ductwork", "diffusers",
         ],
         "a2_distance_km": 1500,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 1,  # default rounds of manufacture
