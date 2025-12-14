@@ -21,7 +21,7 @@ CATEGORY_PRESETS = {
     "category_3_high_complexity": {  # Category 3: high complexity
         "label": "Category 3 - High complexity",
         "examples": [
-            "air handling units", "ahu", "chiller", "fcu", "cooling tower", "ducted split", "ahu unit", "heat pump", "boilers", "heat interface units", "MVHR", "switchgear", "UPS","VAV","VAV Box", "VRF Indoor Unit", "VRF Outdoor Unit",
+            "air handling units", "ahu", "chiller", "fcu", "cooling tower", "ducted split", "ahu unit", "heat pump", "boilers", "boiler", "heat interface units", "MVHR", "switchgear", "UPS","VAV","VAV Box", "VRF Indoor Unit", "VRF Outdoor Unit",
         ],
         "a2_distance_km": 6000,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 4,  # default rounds of manufacture
