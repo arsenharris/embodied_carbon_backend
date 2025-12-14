@@ -3,8 +3,8 @@ CATEGORY_PRESETS = {
     "category_1_low_complexity": {  # Category 1: low complexity
         "label": "Category 1 - Low complexity",  # human readable label
         "examples": [  # example products to help mapping
-            "pipes", "cables", "ducts", "valves", "fire alarm devices", "access control",
-            "cable containment", "electrical outlets", "busbar","ductwork", "diffusers",
+            "pipe", "cables", "valves", "fire alarm device", "access control device",
+            "cable containment", "electrical outlet", "busbar","ductwork", "diffuser",
         ],
         "a2_distance_km": 1500,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 1,  # default rounds of manufacture
@@ -13,7 +13,7 @@ CATEGORY_PRESETS = {
     "category_2_medium_complexity": {  # Category 2: medium complexity
         "label": "Category 2 - Medium complexity",
         "examples": [
-            "pumps", "luminaires", "control panels", "lighting control devices", "sensors", "thermal store", "bms controller","fan",
+            "pump", "luminaire led", "control panel", "lighting control device", "sensors", "thermal store", "bms controller","fan",
         ],
         "a2_distance_km": 3000,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 2,  # default rounds of manufacture
@@ -22,7 +22,7 @@ CATEGORY_PRESETS = {
     "category_3_high_complexity": {  # Category 3: high complexity
         "label": "Category 3 - High complexity",
         "examples": [
-            "air handling units", "ahu", "chiller", "fcu", "cooling tower", "ducted split", "ahu unit", "heat pump", "boilers", "heat interface units", "MVHR", "switchgear", "UPS","VAV","VAV Box", "VRF Indoor Unit", "VRF Outdoor Unit",
+            "ahu", "chiller", "fcu", "cooling tower", "ducted split", "heat pump", "boiler", "heat interface unit", "MVHR", "switchgear", "UPS","vav Box", "vrf indoor unit", "vrf outdoor unit",
         ],
         "a2_distance_km": 6000,   # default A2 transport distance (km by truck)
         "a3_rounds_of_manufacture": 4,  # default rounds of manufacture
