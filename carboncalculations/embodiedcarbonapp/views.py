@@ -6,6 +6,11 @@ from .data.a.materials_a3 import ELECTRICITY_CARBON_FACTORS
 from django.apps import apps
 from rest_framework import status
 from .services.calcs_total import calculate_total_embodied_carbon
+from django.http import HttpResponse
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors, pagesizes
+from reportlab.lib.styles import getSampleStyleSheet
 
 class EmbodiedCarbonList(APIView):
     def get (self, request):
@@ -116,3 +121,92 @@ class MaterialsElectricityFactors(APIView):
     """
     def get(self, request):
         return Response(ELECTRICITY_CARBON_FACTORS, status=status.HTTP_200_OK)
+
+
+class EmbodiedCarbonExportPDF(APIView):
+    """Export embodied carbon records as a simple PDF report.
+
+    Optional query params (simple filtering): `product_type`, `location_of_factory`.
+    For each record we call `calculate_total_embodied_carbon` to include computed totals.
+    """
+    def get(self, request):
+        EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
+
+        qs = EmbodiedCarbon.objects.all()
+        product_type = request.GET.get('product_type')
+        location = request.GET.get('location_of_factory')
+        if product_type:
+            qs = qs.filter(product_type=product_type)
+        if location:
+            qs = qs.filter(location_of_factory=location)
+
+        # Build PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
+        styles = getSampleStyleSheet()
+        elements = []
+
+        title = Paragraph('Embodied Carbon Report', styles['Title'])
+        elements.append(title)
+        elements.append(Spacer(1, 12))
+
+        # Table header
+        data = [[
+            'ID', 'Product Type', 'Weight (kg)', 'Electricity (kWh)',
+            'Factory Location', 'Lifetime (yrs)', 'Refrigerant', 'Refrigerant (kg)',
+            'Location of Use', 'Total Embodied Carbon (kgCO2e)'
+        ]]
+
+        for obj in qs:
+            # attempt to compute totals; if calculation fails include blank
+            total_val = ''
+            try:
+                calc = calculate_total_embodied_carbon(obj)
+                # attempt to mirror the summary used in list view
+                a1 = calc.get('a1_details', 0) + 0
+                a2 = calc.get('a2_details', 0) + 0
+                a3 = calc.get('a3_details', 0) + 0
+                a4 = calc.get('a4_details', 0) + 0
+                a1_to_a4_total = a1 + a2 + a3 + a4
+                c2 = calc.get('c2_details', 0) + 0
+                c3 = calc.get('c3_details', 0) + 0
+                c4 = calc.get('c4_details', 0) + 0
+                c2_to_c4_total = c2 + c3 + c4
+                b3_stage = (a1_to_a4_total*0.1) + (c2_to_c4_total*0.1)
+                buffer_factor = 1.3
+                b1 = calc.get('b1_details', 0) + 0
+                c1 = calc.get('c1_details', 0) + 0
+                total_val = ((a1_to_a4_total + c2_to_c4_total + b3_stage) * buffer_factor) + b1 + c1
+                total_val = round(total_val, 4)
+            except Exception:
+                total_val = 'error'
+
+            data.append([
+                str(obj.id),
+                obj.product_type or '',
+                str(getattr(obj, 'weight_kg', '')),
+                str(getattr(obj, 'electricity_usage_kwh', '')),
+                obj.location_of_factory or '',
+                str(getattr(obj, 'lifetime_years', '')),
+                obj.refrigerant_used or '',
+                str(getattr(obj, 'refrigerant_charge_kg', '')),
+                obj.location_of_use or '',
+                str(total_val)
+            ])
+
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#d3d3d3')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ]))
+
+        elements.append(table)
+        doc.build(elements)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        from django.utils import timezone
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        response['Content-Disposition'] = f'attachment; filename="embodied_carbon_report_{timestamp}.pdf"'
+        return response
