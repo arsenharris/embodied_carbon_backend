@@ -156,51 +156,50 @@ class EmbodiedCarbonExportPDF(APIView):
     def get(self, request):
         EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
 
-        qs = EmbodiedCarbon.objects.all()
-        product_type = request.GET.get('product_type')
-        if product_type:
-            qs = qs.filter(product_type=product_type)
+        record_id = request.GET.get("id")
+        if not record_id:
+            return Response({"error": "id is required"}, status=400)
 
-        location = request.GET.get('location_of_factory')
-        if location:
-            qs = qs.filter(location_of_factory=location)
 
-        # Build PDF
+        instance = EmbodiedCarbon.objects.filter(id=record_id).first()
+        if not instance:
+            return Response({"error": "No data found"}, status=404)
+
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
         styles = getSampleStyleSheet()
         elements = []
 
-        # Use provided project name (GET param) if present, otherwise a default title
         project_name = request.GET.get('project_name') or 'Embodied Carbon Report'
-        title = Paragraph(project_name, styles['Title'])
-        elements.append(title)
-        # Show the tier type below the title (GET param `tier`, default 'professional')
+        elements.append(Paragraph(project_name, styles['Title']))
+
         tier = request.GET.get('tier', 'professional')
-        tier_display = tier.capitalize() if isinstance(tier, str) else str(tier)
-        elements.append(Paragraph(f"Tier: {tier_display}", styles['Normal']))
+        elements.append(Paragraph(f"Tier: {tier.capitalize()}", styles['Normal']))
         elements.append(Spacer(1, 12))
 
-        # Table header
-        data = [[
-            'ID', 'Product Type', 'Weight (kg)', 'Electricity (kWh)',
-            'Factory Location', 'Lifetime (yrs)', 'Refrigerant', 'Refrigerant (kg)',
-            'Location of Use', 'Total Embodied Carbon (kgCO2e)'
-        ]]
+        data = [
+            ["Type of product", instance.product_type],
+            ["Capacity", f"{instance.capacity_kw} kW" if instance.capacity_kw else "N/A"],
+            ["Product weight", f"{instance.weight_kg} kg" if instance.weight_kg else "N/A"],
+            ["Material % breakdown ≥95%", "Yes"],
+            ["Product service life", f"{instance.lifetime_years} years" if instance.lifetime_years else "N/A"],
+            ["Refrigerant type",f"{instance.refrigerant_used}"],
+            ["Refrigerant charge",f"{instance.refrigerant_charge_kg} kg"if instance.refrigerant_charge_kg else "Not applicable"],]
 
-        table = Table(data, repeatRows=1)
+        table = Table(data, colWidths=[200, 300])
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#d3d3d3')),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
 
         elements.append(table)
         doc.build(elements)
-        buffer.seek(0)
 
+        buffer.seek(0)
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-        from django.utils import timezone
-        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-        response['Content-Disposition'] = f'attachment; filename="embodied_carbon_report_{timestamp}.pdf"'
+        response['Content-Disposition'] = 'attachment; filename="embodied_carbon_report.pdf"'
         return response
