@@ -29,7 +29,7 @@ MATERIAL_COEFFS = {
 
 # This is for a1 proportion of material.User can override on front end if they want to change the default percentages.
 PRESET_PERCENTAGES = {
-    "AHU": {
+    "ahu": {
         "steel": 45, 
         "aluminium": 15, 
         "copper": 10,
@@ -41,21 +41,21 @@ PRESET_PERCENTAGES = {
         "polyurethane_foam": 1,
     },
 
-    "Access Control Device": {
+    "access control device": {
         "plastics": 50,
         "electronic_components": 30,
         "printed_wiring_board_mixed_mounted": 10,
         "stainless_steel": 5,
     },
 
-    "BMS Controller": {
+    "bms Controller": {
         "plastics": 20,
         "electronic_components": 35,
         "printed_wiring_board_mixed_mounted": 35,
         "copper": 10,
     },
 
-    "Boiler": {
+    "boiler": {
         "steel": 60, 
         "cast_iron": 20,
         "copper": 5, 
@@ -66,25 +66,25 @@ PRESET_PERCENTAGES = {
         "pvc": 2,
     },
 
-    "Busbar": {
+    "busbar": {
         "copper": 70,
         "steel": 20,
         "plastics": 10,
     },
 
-    "Cable Containment": {
+    "cable containment": {
         "steel": 85,
         "aluminium": 10,
         "zinc": 5,
     },
 
-    "Cables": {
+    "cables": {
         "copper": 55,
         "pvc": 35,
         "plastics": 10,
     },
 
-    "Chiller": {
+    "chiller": {
         "steel": 65,
         "aluminium": 15, 
         "copper": 5, 
@@ -94,7 +94,7 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 2, 
     },
 
-    "Control Panel": {
+    "control panel": {
         "steel": 50,
         "copper": 20,
         "plastics": 10,
@@ -112,7 +112,7 @@ PRESET_PERCENTAGES = {
         "polypropylene": 20,
     },
 
-    "Ducted split": {
+    "ducted split": {
         "steel": 40, 
         "aluminium": 15, 
         "copper": 8, 
@@ -122,7 +122,7 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 2, 
     },
 
-    "Ductwork": {
+    "ductwork": {
         "steel": 80,
         "insulation": 12,
         "pvc": 3,
@@ -130,13 +130,13 @@ PRESET_PERCENTAGES = {
         "polyurethane_foam": 3,
     },
 
-    "Diffuser": {
+    "diffuser": {
         "aluminium": 75,
         "steel": 15,
         "plastics": 5,
     },
 
-    "Electrical Outlet": {
+    "electrical outlet": {
         "plastics": 40,
         "copper": 30,
         "steel": 15,
@@ -144,7 +144,7 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 5,
     },
 
-    "Fan": {
+    "fan": {
         "steel": 55,
         "aluminium": 10,
         "copper": 20,
@@ -153,7 +153,7 @@ PRESET_PERCENTAGES = {
         "electronic_components": 2,
     },
 
-    "FCU": {
+    "fcu": {
         "steel": 40,
         "aluminium": 10, 
         "copper": 20,
@@ -163,7 +163,7 @@ PRESET_PERCENTAGES = {
         "polyurethane_foam": 2,
     },
 
-    "Fire Alarm Device": {
+    "fire alarm device": {
         "plastics": 35,
         "electronic_components": 30,
         "printed_wiring_board_mixed_mounted": 20,
@@ -171,7 +171,7 @@ PRESET_PERCENTAGES = {
         "steel": 5,
     },
 
-    "Heat Interface Unit (HIU)": {
+    "heat interface unit (hiu)": {
         "steel": 40,
         "copper": 30,
         "brass": 10,
@@ -180,7 +180,7 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 5,
     },
 
-    "Heat pump": {
+    "heat pump": {
         "plastics": 4,
         "stainless_steel": 10,
         "aluminium": 7,
@@ -190,14 +190,14 @@ PRESET_PERCENTAGES = {
         "electronic_components": 3,
     },
 
-    "Lighting Control Device": {
+    "lighting control device": {
         "plastics": 30,
         "electronic_components": 30,
         "printed_wiring_board_mixed_mounted": 30,
         "copper": 10,
     },
 
-    "Luminaire  LED": {
+    "louminaire  led": {
         "aluminium": 40,
         "steel": 20,
         "plastics": 15,
@@ -206,7 +206,7 @@ PRESET_PERCENTAGES = {
         "glass": 5,
     },
 
-    "MVHR Unit": {
+    "mvhr unit": {
         "steel": 35,
         "aluminium": 15,
         "plastics": 20,
@@ -216,12 +216,12 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 5,
     },
 
-    "Pipe ": {
+    "pipe": {
         "copper": 90,
         "insulation": 10,
     },
 
-    "Pump": {
+    "pump": {
         "cast_iron": 55, 
         "steel": 20, 
         "copper": 10,
@@ -231,14 +231,14 @@ PRESET_PERCENTAGES = {
         "rubber": 2,
     },
 
-    "Sensors": {
+    "sensors": {
         "plastics": 30,
         "electronic_components": 35,
         "printed_wiring_board_mixed_mounted": 25,
         "copper": 10,
     },
 
-    "Switchgear": {
+    "switchgear": {
         "steel": 45,
         "copper": 25,
         "plastics": 10,
@@ -247,28 +247,28 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 2,
     },
 
-    "Thermal Store": {
+    "thermal store": {
         "steel": 70,
         "insulation": 20,
         "plastics": 5,
         "copper": 5,
     },
 
-    "UPS": {
+    "ups": {
         "steel": 40,
         "copper": 20,
         "electronic_components": 20,
         "plastics": 10,
         "lithium": 10,
     },
-    "Valves": {
+    "valves": {
         "brass": 60,
         "steel": 20,
         "stainless_steel": 10,
         "rubber": 5,
         "plastics": 5,
     },
-    "VAV Box": {
+    "vav box": {
         "steel": 50,
         "aluminium": 20,
         "insulation": 15,
@@ -278,7 +278,7 @@ PRESET_PERCENTAGES = {
         "pvc": 2,
     },
 
-    "VRF Indoor Unit": {
+    "vrf indoor unit": {
         "steel": 15, 
         "aluminium": 10, 
         "copper": 12,
@@ -290,7 +290,7 @@ PRESET_PERCENTAGES = {
         "rubber": 2,
     },
 
-    "VRF Outdoor Unit": {
+    "vrf outdoor unit": {
         "steel": 50, 
         "aluminium": 10, 
         "copper": 20,
@@ -302,8 +302,19 @@ PRESET_PERCENTAGES = {
     },
 }
 
-# Normalized mapping for case-insensitive lookups (keyed by lower-case product_type)
 PRESET_PERCENTAGES_NORMALIZED = {k.lower(): v for k, v in PRESET_PERCENTAGES.items()}
-
-
-
+TRANSPORT_EMISSION_FACTOR_A2_C2 = 0.133  # kgCO2e / t·km (BEIS average HGV)
+TRANSPORT_EMISSION_FACTORS_SEA = 0.02
+LANDFILL_EMISSION_FACTOR = 0.2  # kg CO2e / kg waste
+REFRIGERANT_LEAKAGE_SCENARIOS = [
+	{
+		# "product_type": "Charge greater than 100 kg (type A)",
+		"annual_leakage_rate_b1_use": 0.09,
+		"end_of_life_leakage_rate_c1_deconstruction": 0.05,
+	},
+	{
+		# "product_type": "Charge less than 100 kg (type B)",
+		"annual_leakage_rate_b1_use": 0.09,
+		"end_of_life_leakage_rate_c1_deconstruction": 0.30,
+	},
+]

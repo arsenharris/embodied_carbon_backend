@@ -1,191 +1,151 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializer import EmbodiedCarbonSerializer
-from .data.a.materials_a1 import MATERIAL_COEFFS, PRESET_PERCENTAGES
-from .data.a.materials_a3 import ELECTRICITY_CARBON_FACTORS
+from django.http import HttpResponse
 from django.apps import apps
 from rest_framework import status
-from .services.calcs_total import calculate_total_embodied_carbon
-from .services.a.calcs_a1 import calculate_a1_from_instance
-from .services.a.calcs_a2 import calculate_a2_from_instance
-from .services.a.calcs_a3 import calculate_a3_from_instance
-from .services.a.calcs_a4 import calculate_a4_from_instance
-from .services.c.calcs_c2 import calculate_c2_from_instance
-from .services.c.calcs_c3 import calculate_c3_from_instance
-from .services.c.calcs_c4 import calculate_c4_from_instance
-from .services.calcs_b1andc1 import calculate_b1andc1_from_instance
-from django.http import HttpResponse
+from .data.material_reference import MATERIAL_COEFFS, PRESET_PERCENTAGES
+from .data.reference_data import  PRODUCT_LIST,MANUFACTURING_LOCATION,REFRIGERANT_GWP,INSTALLATION_LOCATION
+from .calculations.calculations import (calculate_a1_from_instance,calculate_a2_from_instance,calculate_a3_from_instance,calculate_a4_from_instance)
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors, pagesizes
 from reportlab.lib.styles import getSampleStyleSheet
 
+
+
+
 class EmbodiedCarbonList(APIView):
+    def get_product(self, product_type: str) -> dict:
+        normalized = product_type.strip().lower()
+        for product in PRODUCT_LIST:
+            if product["product"].lower() == normalized or product.get("display_name", "").lower() == normalized:
+                return product
+        raise ValueError(f"Invalid product_type '{product_type}'")
+
+    def get_manufacturing_location(self,location_of_factory: str) -> dict:
+        normalized = location_of_factory.strip().lower()
+        for location in MANUFACTURING_LOCATION:
+            if location["location"] .lower()== normalized or location.get("display_name", "").lower() == normalized:
+                return location
+        raise ValueError(f"Invalid location_of_factory '{self,location_of_factory}'")
+        
+    def get_installation_location(self, location_of_use: str) -> dict:
+        normalized = location_of_use.strip().lower()
+        for install in INSTALLATION_LOCATION:
+            if install["installation"] .lower() == normalized or install.get("display_name", "").lower() == normalized:
+                return install
+        raise ValueError(f"Invalid location_of_use '{location_of_use}'")
+    
+    def get_refrigerant(self,refrigerant_used: str) -> dict:
+        normalized = refrigerant_used.strip().lower()
+        for ref in REFRIGERANT_GWP:
+            if ref["refrigerant"].lower() == normalized or ref.get("display_name", "").lower() == normalized:
+                return ref
+        raise ValueError(f"Invalid refrigerant '{refrigerant_used}'")
+
+
     def get (self, request):
         EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
         embodied_carbons = EmbodiedCarbon.objects.all()
         serializer = EmbodiedCarbonSerializer(embodied_carbons, many=True)
         return Response(serializer.data)
     
-    def post(self, request):
-        # Accept request payload with at least 'product_type' and 'weight_kg'.
-        # The view will save the minimal model and then run the calculation service
-        # which reads the values from the saved model instance.        
+    def post(self, request):    
         data = request.data
-        product_type = data.get("product_type")
+        project_name = data.get("project_name")
+        product_type = self.get_product(data.get("product_type"))["product"]
         weight_kg = data.get("weight_kg")
         electricity_usage_kwh = data.get("electricity_usage_kwh")
-        location_of_factory = data.get("location_of_factory")
+        location_of_factory = self.get_manufacturing_location(data.get("location_of_factory"))["location"]
         lifetime_years = data.get("lifetime_years", None)
-        refrigerant_used = data.get("refrigerant_used", None)
+        refrigerant_used = self.get_refrigerant(data.get("refrigerant_used"))["refrigerant"]
         refrigerant_charge_kg = data.get("refrigerant_charge_kg", None)
         refrigerant_leakage_rate_pct_per_year = data.get("refrigerant_leakage_rate_pct_per_year", None)
-        location_of_use = data.get("location_of_use", None)
-        # Use serializer to validate and persist minimal model (product_type + weight_kg)
-        serializer = EmbodiedCarbonSerializer(data={"product_type": product_type, "weight_kg": weight_kg, "electricity_usage_kwh": electricity_usage_kwh, "location_of_factory": location_of_factory, "lifetime_years": lifetime_years, "refrigerant_used": refrigerant_used, "refrigerant_charge_kg": refrigerant_charge_kg, "refrigerant_leakage_rate_pct_per_year": refrigerant_leakage_rate_pct_per_year, "location_of_use": location_of_use})
+        location_of_use = self.get_installation_location(data.get("location_of_use"))["installation"]
+
+
+        serializer = EmbodiedCarbonSerializer(data={"project_name": project_name, "product_type": product_type, "weight_kg": weight_kg, "electricity_usage_kwh": electricity_usage_kwh, "location_of_factory": location_of_factory, "lifetime_years": lifetime_years, "refrigerant_used": refrigerant_used, "refrigerant_charge_kg": refrigerant_charge_kg, "refrigerant_leakage_rate_pct_per_year": refrigerant_leakage_rate_pct_per_year, "location_of_use": location_of_use})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
         instance = serializer.save()
-
-        # If frontend provided a materials override in the request payload, attach
-        # it to the instance so calculation services can use it for this run.
+    
         materials_override = data.get("materials_override") or data.get("materials")
+
         if materials_override and isinstance(materials_override, dict):
-            # attach as a temporary attribute (not persisted) used by calculation
             setattr(instance, 'materials_override', materials_override)
 
-        # Support tiered responses. Client may supply `tier` and optional `detail`:
-        # - tier: 'basic' -> return A1 only
-        # - tier: 'professional' -> supports detail: 'basic' (A1-A3), 'mid' (A1-A4), 'full' (A1-C4 full lifecycle)
-        tier = (data.get("tier") or "professional").lower()
-        detail = (data.get("detail") or "basic").lower()
+        tier = (data.get("freetier") or "basic" or "professional").lower()
 
         try:
-            if tier == 'basic':
+            if tier == 'freetier':
                 a1_res = calculate_a1_from_instance(instance)
                 a1_val = float(a1_res.get('total_a1', 0.0))
-                return Response({
-                    "tier": "basic",
-                    "a1": a1_val,
-                    "a1_to_a4_total": a1_val,
-                    "total_embodied_carbon": a1_val,
-                }, status=status.HTTP_201_CREATED)
+                return Response({ "a1": a1_val,}, status=status.HTTP_201_CREATED)
 
-            # professional tier: choose level of detail
-            if tier == 'professional':
-                if detail == 'basic':
-                    # basic: A1, A2, A3 only
+            if tier == 'basic':
                     a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
-                    a2_val = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
-                    a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
-                    a1_to_a3_total = a1_val + a2_val + a3_val
-                    return Response({
-                        "tier": "professional",
-                        "detail": "basic",
-                        "a1": a1_val,
-                        "a2": a2_val,
-                        "a3": a3_val,
-                        "a1_to_a3_total": a1_to_a3_total,
-                    }, status=status.HTTP_201_CREATED)
+                    a2_res = calculate_a2_from_instance(instance)
+                    a2_val = float(a2_res.get('total_a2', 0.0))
 
-                if detail == 'mid':
-                    # mid: A1..A4
+                    a3_res = calculate_a3_from_instance(instance)
+                    a3_val = float(a3_res.get('total_a3', 0.0))
+
+                    a4_res = calculate_a4_from_instance(instance)
+                    a4_val = float(a4_res.get('total_a4', 0.0))
+                    total_a=a1_val + a2_val + a3_val + a4_val
+                    return Response({ "a1": a1_val, "a2": a2_val, "a3": a3_val, "a4": a4_val,"total_a": total_a,}, status=status.HTTP_201_CREATED)
+
+            if tier == 'professional':
                     a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
                     a2_val = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
                     a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
                     a4_val = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
-                    a1_to_a4_total = a1_val + a2_val + a3_val + a4_val
-                    return Response({
-                        "tier": "professional",
-                        "detail": "mid",
-                        "a1": a1_val,
-                        "a2": a2_val,
-                        "a3": a3_val,
-                        "a4": a4_val,
-                        "a1_to_a4_total": a1_to_a4_total,
+
+                    return Response({"a1": a1_val,"a2": a2_val,"a3": a3_val,"a4": a4_val,
                     }, status=status.HTTP_201_CREATED)
 
-                # default/professional full lifecycle
-                calculation_total = calculate_total_embodied_carbon(instance)
 
-                a1_val = calculation_total.get("a1_details")
-                a2_val = calculation_total.get("a2_details")
-                a3_val = calculation_total.get("a3_details")
-                a4_val = calculation_total.get("a4_details")
-                a1_to_a4_total = a1_val + a2_val + a3_val + a4_val
-                c2_val = calculation_total.get("c2_details")
-                c3_val = calculation_total.get("c3_details")
-                c4_val = calculation_total.get("c4_details")
-                c2_to_c4_total = c2_val + c3_val + c4_val   
-                b3_stage = (a1_to_a4_total*0.1)+(c2_to_c4_total*0.1)
-                buffer_factor=1.3
-                return Response({
-                    "tier": "professional",
-                    "detail": "full",
-                    "a1": a1_val,
-                    "a2": a2_val,
-                    "a3": a3_val,
-                    "a4": a4_val,
-                    "a1_to_a4_total": a1_to_a4_total,
-                    "c2": c2_val,
-                    "c3": c3_val,
-                    "c4": c4_val,
-                    "c2_to_c4_total": c2_to_c4_total,
-                    "b3": b3_stage,
-                    "with_buffer_factor": (a1_to_a4_total + c2_to_c4_total + b3_stage) * buffer_factor,
-                    "b1": calculation_total.get("b1_details"),
-                    "c1": calculation_total.get("c1_details"),
-                    "b1andc1": calculation_total.get("b1_details") + calculation_total.get("c1_details"),
-                    "total_embodied_carbon": ((a1_to_a4_total + c2_to_c4_total + b3_stage) * buffer_factor)+ calculation_total.get("b1_details") + calculation_total.get("c1_details"),
-                }, status=status.HTTP_201_CREATED)
-
-            # unknown tier -> fallback to full calculation
-            calculation_total = calculate_total_embodied_carbon(instance)
-            return Response({"warning": "unknown tier; returned full lifecycle", **calculation_total}, status=status.HTTP_201_CREATED)
-
-        except Exception as exc:  # if calculation fails
+        except Exception as exc: 
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class MaterialsCoefficients(APIView):
-    """Return the embodied carbon coefficients (MATERIAL_COEFFS) for materials.
 
-    This endpoint exposes the values defined in `data/a/materials_a1.py` so the
-    frontend MaterialEditor can fetch them.
-    """
+class MaterialsCoefficients(APIView):
+    ''' getting materials coefficients '''
     def get(self, request):
+
         return Response(MATERIAL_COEFFS, status=status.HTTP_200_OK)
 
 
 class MaterialsPresets(APIView):
-    """Return preset percentage allocations for products (from materials_a1.PRESET_PERCENTAGES).
-
-    Frontend will request this endpoint to obtain per-product allocations (e.g. "AHU").
-    """
+    ''' getting and setting preset percentages for materials '''
     def get(self, request):
+
         return Response(PRESET_PERCENTAGES, status=status.HTTP_200_OK)
+    
     def post(self, request):
             product_type = request.data.get("product_type")
+
             materials = request.data.get("materials", {})
 
             if not product_type:
                 return Response({"error": "product_type is required"}, status=400)
-
-            # Save/update here
+            
             PRESET_PERCENTAGES[product_type] = materials
-
+            
             return Response({"message": "Saved successfully"}, status=200)
 
 
 class MaterialsElectricityFactors(APIView):
-    """Return electricity carbon factors (ELECTRICITY_CARBON_FACTORS) for A3.
-
-    Frontend should call this to populate a dropdown so users can choose the
-    manufacturing electricity carbon factor (location key).
-    """
+    ''' getting electricity carbon factors for manufacturing locations '''
     def get(self, request):
-        return Response(ELECTRICITY_CARBON_FACTORS, status=status.HTTP_200_OK)
-
+        try:
+            factors = {loc['key']: loc.get('electricity_carbon_factor') for loc in MANUFACTURING_LOCATION}
+        except Exception:
+            factors = {}
+        return Response(factors, status=status.HTTP_200_OK)
 
 class EmbodiedCarbonExportPDF(APIView):
     """Export embodied carbon records as a simple PDF report.
@@ -198,9 +158,10 @@ class EmbodiedCarbonExportPDF(APIView):
 
         qs = EmbodiedCarbon.objects.all()
         product_type = request.GET.get('product_type')
-        location = request.GET.get('location_of_factory')
         if product_type:
             qs = qs.filter(product_type=product_type)
+
+        location = request.GET.get('location_of_factory')
         if location:
             qs = qs.filter(location_of_factory=location)
 
@@ -210,8 +171,14 @@ class EmbodiedCarbonExportPDF(APIView):
         styles = getSampleStyleSheet()
         elements = []
 
-        title = Paragraph('Embodied Carbon Report', styles['Title'])
+        # Use provided project name (GET param) if present, otherwise a default title
+        project_name = request.GET.get('project_name') or 'Embodied Carbon Report'
+        title = Paragraph(project_name, styles['Title'])
         elements.append(title)
+        # Show the tier type below the title (GET param `tier`, default 'professional')
+        tier = request.GET.get('tier', 'professional')
+        tier_display = tier.capitalize() if isinstance(tier, str) else str(tier)
+        elements.append(Paragraph(f"Tier: {tier_display}", styles['Normal']))
         elements.append(Spacer(1, 12))
 
         # Table header
@@ -220,43 +187,6 @@ class EmbodiedCarbonExportPDF(APIView):
             'Factory Location', 'Lifetime (yrs)', 'Refrigerant', 'Refrigerant (kg)',
             'Location of Use', 'Total Embodied Carbon (kgCO2e)'
         ]]
-
-        for obj in qs:
-            # attempt to compute totals; if calculation fails include blank
-            total_val = ''
-            try:
-                calc = calculate_total_embodied_carbon(obj)
-                # attempt to mirror the summary used in list view
-                a1 = calc.get('a1_details', 0) + 0
-                a2 = calc.get('a2_details', 0) + 0
-                a3 = calc.get('a3_details', 0) + 0
-                a4 = calc.get('a4_details', 0) + 0
-                a1_to_a4_total = a1 + a2 + a3 + a4
-                c2 = calc.get('c2_details', 0) + 0
-                c3 = calc.get('c3_details', 0) + 0
-                c4 = calc.get('c4_details', 0) + 0
-                c2_to_c4_total = c2 + c3 + c4
-                b3_stage = (a1_to_a4_total*0.1) + (c2_to_c4_total*0.1)
-                buffer_factor = 1.3
-                b1 = calc.get('b1_details', 0) + 0
-                c1 = calc.get('c1_details', 0) + 0
-                total_val = ((a1_to_a4_total + c2_to_c4_total + b3_stage) * buffer_factor) + b1 + c1
-                total_val = round(total_val, 4)
-            except Exception:
-                total_val = 'error'
-
-            data.append([
-                str(obj.id),
-                obj.product_type or '',
-                str(getattr(obj, 'weight_kg', '')),
-                str(getattr(obj, 'electricity_usage_kwh', '')),
-                obj.location_of_factory or '',
-                str(getattr(obj, 'lifetime_years', '')),
-                obj.refrigerant_used or '',
-                str(getattr(obj, 'refrigerant_charge_kg', '')),
-                obj.location_of_use or '',
-                str(total_val)
-            ])
 
         table = Table(data, repeatRows=1)
         table.setStyle(TableStyle([
