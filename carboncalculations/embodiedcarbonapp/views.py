@@ -74,7 +74,7 @@ class EmbodiedCarbonList(APIView):
         if materials_override and isinstance(materials_override, dict):
             setattr(instance, 'materials_override', materials_override)
 
-        tier = "professional"
+        tier = "basic"
 
         try:
             if tier == 'freetier':
@@ -146,8 +146,6 @@ class EmbodiedCarbonList(APIView):
         except Exception as exc: 
             return Response({"detail": str(exc)}, status=status.HTTP_408_REQUEST_TIMEOUT)
 
-
-
 class MaterialsCoefficients(APIView):
     ''' getting materials coefficients '''
     def get(self, request):
@@ -196,7 +194,6 @@ class EmbodiedCarbonExportPDF(APIView):
         if not record_id:
             return Response({"error": "id is required"}, status=400)
 
-
         instance = EmbodiedCarbon.objects.filter(id=record_id).first()
         if not instance:
             return Response({"error": "No data found"}, status=404)
@@ -213,7 +210,6 @@ class EmbodiedCarbonExportPDF(APIView):
         elements.append(Paragraph(f"Tier: {tier.capitalize()}", styles['Normal']))
         elements.append(Spacer(1, 12))
 
-
         # Short lookup: find GWP from REFRIGERANT_GWP and append if found
         refrigerant_display = instance.refrigerant_used or "Not specified"
         normalized = (instance.refrigerant_used or "").strip().lower()
@@ -221,7 +217,9 @@ class EmbodiedCarbonExportPDF(APIView):
         gwp_suffix = f" — GWP: {gwp_val}" if gwp_val is not None else ""
         refrigerant_display = f"{refrigerant_display}{gwp_suffix}"
 
+        # Add a simple header row for product information and value
         data = [
+            ["Product Information", "Value"],
             ["Type of product", instance.product_type],
             ["Capacity", f"{instance.capacity_kw} kW" if instance.capacity_kw else "N/A"],
             ["Product weight", f"{instance.weight_kg} kg" if instance.weight_kg else "N/A"],
@@ -234,14 +232,325 @@ class EmbodiedCarbonExportPDF(APIView):
         table = Table(data, colWidths=[200, 300])
         table.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-            ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            # Header row styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            # Body row background
+            ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
 
         elements.append(table)
+        # If basic tier was requested, add a separate table with basic-tier embodied carbon results
+        if tier == 'basic':
+            try:
+                # Use same scale and buffer factors as in the API calculation path
+                scaleup_factor = 1.6
+                buffer_factor = 1.3
+
+                a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
+                a2_val = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
+                a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
+                a4_val = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
+
+                # Transport / end-of-life stages
+                c2_val = float(calculate_c2_from_instance(instance).get('total_c2', 0.0))
+                c3_val = float(calculate_c3_from_instance(instance).get('total_c3', 0.0))
+                c4_val = float(calculate_c4_from_instance(instance).get('total_c4', 0.0))
+
+                # Derive B3 as 10% of (A1-A4 + C2-C4) (same approach used elsewhere)
+                total_a1_to_a4 = a1_val + a2_val + a3_val + a4_val
+                total_c2_to_c4 = c2_val + c3_val + c4_val
+                b3_val = 0.1 * (total_a1_to_a4 + total_c2_to_c4)
+
+                # A1 components replaced in B3 are assumed to be 10% of A1 (consistent with replacement factor)
+                a1_components_replaced = a1_val * 0.1
+
+                # Total of A1–A4, B3, C2–C4 before scaling
+                total_no_refrigerant = total_a1_to_a4 + total_c2_to_c4 + b3_val
+
+                # Apply scale-up and buffer factors
+                scaled = total_no_refrigerant * scaleup_factor
+                buffered = scaled * buffer_factor
+
+                basic_table_data = [
+                    ["Embodied carbon results (kgCO2e) — without refrigerant leakage", ""],
+                    ["A1: Material extraction (original product)", f"{a1_val:.2f}"],
+                    ["A1: Material extraction (components that are\nreplaced in B3)", f"{a1_components_replaced:.2f}"],
+                    ["A1–A4, B3, C2–C4: Total embodied carbon\nwith scale-up and buffer factors (excluding\nrefrigerant leakage)", f"{buffered:.2f}"],
+                ]
+
+                basic_table = Table(basic_table_data, colWidths=[300, 200])
+                basic_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+
+                elements.append(Spacer(1, 12))
+                elements.append(basic_table)
+
+                # Refrigerant leakage only (B1 + C1)
+                b1c1 = calculate_b1andc1_from_instance(instance)
+                total_b1 = float(b1c1.get('total_b1', 0.0))
+                total_c1 = float(b1c1.get('total_c1', 0.0))
+                total_b1_c1 = total_b1 + total_c1
+
+                refrigerant_table_data = [
+                    ["Embodied carbon result (kgCO2e) — refrigerant leakage only", ""],
+                    ["B1 (refrigerant leakage during use) + C1 (refrigerant leakage end of life)", f"{total_b1_c1:.2f}"],
+                ]
+                refrigerant_table = Table(refrigerant_table_data, colWidths=[300, 200])
+                refrigerant_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+
+                elements.append(Spacer(1, 12))
+                elements.append(refrigerant_table)
+
+                # Embodied carbon result with basic calculation method (A1–C4 total)
+                basic_method_total = total_a1_to_a4 + total_c2_to_c4
+                basic_total_table_data = [
+                    ["Embodied carbon result with basic calculation method (kgCO2e) — total", ""],
+                    ["A1–C4", f"{basic_method_total:.2f}"],
+                ]
+                basic_total_table = Table(basic_total_table_data, colWidths=[300, 200])
+                basic_total_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+
+                elements.append(Spacer(1, 12))
+                elements.append(basic_total_table)
+
+                # Assumptions table
+                assumptions_data = [
+                    ["Assumptions", ""],
+                    ["A1: Material carbon coefficient source", "CIBSE guide TM65ANZ Table 2.3"],
+                    ["B1: Refrigerant annual leakage rate (%)", "9% TM65ANZ assumptions"],
+                    ["C1: End of life leakage rate (%)", "30% TM65ANZ assumptions"],
+                    ["B3: Proportion of materials replaced as part of repair (%)", "10% TM65ANZ assumptions"],
+                ]
+                assumptions_table = Table(assumptions_data, colWidths=[300, 200])
+                assumptions_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+
+                elements.append(Spacer(1, 12))
+                elements.append(assumptions_table)
+            except Exception:
+                # If any calculation fails, continue without the basic-tier table
+                pass
+        # Mid-level report section: notes, product info, detailed stage breakdown, refrigerant only and mid-level total
+        if tier == 'professional':
+            try:
+                notes_data = [
+                    ["Mid-level calculation Notes/source", ""],
+                    ["Date of assessment", request.GET.get('date_of_assessment', 'dd.mm.yy')],
+                    ["Name of assessor and assessor organisation", request.GET.get('assessor_name', 'Example for guide')],
+                    ["Contact details of assessor", request.GET.get('assessor_contact', 'Example for guide')],
+                    ["Country", request.GET.get('country', 'Australia')],
+                    ["Calculations based on", "TM65ANZ"],
+                ]
+                notes_table = Table(notes_data, colWidths=[300, 200])
+                notes_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(notes_table)
+
+                # Product information (reuse instance fields, fallback to example values)
+                product_complexity = getattr(instance, 'product_complexity_category', None) or request.GET.get('product_complexity', 'Category 3')
+                material_95 = 'Y' if request.GET.get('material_95', None) in (None, '', 'Y', 'y', 'yes') else request.GET.get('material_95')
+                product_info = [
+                    ["Product information", "Value"],
+                    ["Type of product", instance.product_type or 'Heat Pump'],
+                    ["Capacity", f"{instance.capacity_kw} kW" if getattr(instance, 'capacity_kw', None) else request.GET.get('capacity', '100 kW')],
+                    ["Product weight (kg)", f"{instance.weight_kg} kg" if getattr(instance, 'weight_kg', None) else request.GET.get('weight_kg', '1000 kg')],
+                    ["Material % breakdown for at least 95% of the product weight? (Y/N)", material_95],
+                    ["Product service life (years)", f"{instance.lifetime_years}" if getattr(instance, 'lifetime_years', None) else request.GET.get('lifetime_years', '15')],
+                    ["If refrigerant based, type of refrigerant used", refrigerant_display],
+                    ["Refrigerant charge (kg)", f"{instance.refrigerant_charge_kg} kg" if getattr(instance, 'refrigerant_charge_kg', None) else request.GET.get('refrigerant_charge_kg', '35 kg')],
+                    ["Energy consumption of the factory per unit of product", f"{instance.electricity_usage_kwh} kW·h" if getattr(instance, 'electricity_usage_kwh', None) else request.GET.get('electricity_usage_kwh', '200 kW·h')],
+                    ["Location of factory – final assembly location", getattr(instance, 'location_of_factory', request.GET.get('location_of_factory', 'China, Asia'))],
+                    ["Product complexity category", product_complexity],
+                ]
+                prod_table = Table(product_info, colWidths=[300, 200])
+                prod_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(prod_table)
+
+                # Detailed stage breakdown (A1..C4). Use calculations where available; show 'n/a' where not applicable.
+                a1 = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
+                a2 = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
+                a3 = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
+                a4 = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
+                # A5, B2, B4..B7 may not be modelled; mark n/a
+                b1 = float(calculate_b1andc1_from_instance(instance).get('total_b1', 0.0))
+                b3 = 0.0
+                # For mid-level B3 use 10% of (A1–A4 + C2–C4)
+                total_a1_to_a4 = a1 + a2 + a3 + a4
+                c2 = float(calculate_c2_from_instance(instance).get('total_c2', 0.0))
+                c3 = float(calculate_c3_from_instance(instance).get('total_c3', 0.0))
+                c4 = float(calculate_c4_from_instance(instance).get('total_c4', 0.0))
+                # B3 assume 10% of (A1–A4 + C2–C4)
+                b3 = 0.1 * (total_a1_to_a4 + c2 + c3 + c4)
+                c1 = float(calculate_b1andc1_from_instance(instance).get('total_c1', 0.0))
+
+                breakdown_data = [
+                    ["Embodied carbon results (kgCO2e) — without refrigerant leakage", ""],
+                    ["A1: Material extraction", f"{a1:.2f} TM65ANZ assumptions"],
+                    ["A2: Transport", f"{a2:.2f} TM65ANZ assumptions"],
+                    ["A3: Manufacturing", f"{a3:.2f} TM65ANZ assumptions"],
+                    ["A4: Transport to site", f"{a4:.2f} TM65ANZ assumptions"],
+                    ["A5: Construction", "n/a"],
+                    ["B1: Use", f"{b1:.2f} TM65ANZ type B"],
+                    ["B2: Maintenance", "n/a"],
+                    ["B3: Repair", f"{b3:.2f} TM65ANZ assumptions"],
+                    ["B4: Replacement", "n/a"],
+                    ["B5: Refurbishment", "n/a"],
+                    ["B6: Operational energy", "n/a"],
+                    ["B7: Operational water", "n/a"],
+                    ["C1: Deconstruction", f"{c1:.2f} TM65ANZ type B"],
+                    ["C2: Transport", f"{c2:.2f} TM65ANZ assumptions"],
+                    ["C3: Waste processing", f"{c3:.2f} TM65ANZ assumptions"],
+                    ["C4: Disposal", f"{c4:.2f} TM65ANZ"],
+                ]
+                breakdown_table = Table(breakdown_data, colWidths=[300, 200])
+                breakdown_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(breakdown_table)
+
+                # A1–C4 excluding B1,C1 and with buffer
+                total_no_refrigerant = total_a1_to_a4 + c2 + c3 + c4
+                total_with_buffer = total_no_refrigerant * buffer_factor
+                totals_data = [
+                    ["Embodied carbon result (kgCO2e) — without refrigerant leakage", ""],
+                    ["A1–C4 (Excluding B1,C1)", f"{total_no_refrigerant:.2f}"],
+                    ["A1–C4 with buffer factor (excluding B1, C1)", f"{total_with_buffer:.2f}"],
+                ]
+                totals_table = Table(totals_data, colWidths=[300, 200])
+                totals_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(totals_table)
+
+                # Refrigerant leakage only
+                total_b1_c1 = b1 + c1
+                refrigerant_only = [
+                    ["Embodied carbon result (kgCO2e) — refrigerant leakage only", ""],
+                    ["B1 (refrigerant leakage during use) + C1 (refrigerant leakage end of life)", f"{total_b1_c1:.2f}"],
+                ]
+                refrigerant_only_table = Table(refrigerant_only, colWidths=[300, 200])
+                refrigerant_only_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(refrigerant_only_table)
+
+                # Mid-level total (follow professional mid-level math)
+                c2_to_c4 = c2 + c3 + c4
+                b3_mid = (total_a1_to_a4 * 0.1) + (c2_to_c4 * 0.1)
+                with_buffer_mid = (total_a1_to_a4 + c2_to_c4 + b3_mid) * buffer_factor
+                mid_level_total = with_buffer_mid + total_b1_c1
+                mid_level_table_data = [
+                    ["Embodied carbon result with mid-level calculation method (kgCO2e) — total", ""],
+                    ["Result of mid-level calculation", f"{mid_level_total:.2f}"],
+                ]
+                mid_level_table = Table(mid_level_table_data, colWidths=[300, 200])
+                mid_level_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(mid_level_table)
+
+                # Assumptions table (mid-level)
+                assumptions_mid = [
+                    ["Assumptions", ""],
+                    ["A1: Material carbon coefficient source", "TM65ANZ Table 2.3"],
+                    ["B1: Refrigerant annual leakage rate (%)", "9% TM65ANZ type B"],
+                    ["C1: End of life leakage rate (%)", "30% TM65ANZ type B"],
+                    ["B3: Materials replaced as part of repair (%)", "10% TM65ANZ assumption"],
+                    ["C4: Percentage of product going to landfill (%)", "30% TM65ANZ assumption"],
+                ]
+                assumptions_mid_table = Table(assumptions_mid, colWidths=[300, 200])
+                assumptions_mid_table.setStyle(TableStyle([
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(Spacer(1, 12))
+                elements.append(assumptions_mid_table)
+            except Exception:
+                pass
         doc.build(elements)
 
         buffer.seek(0)
