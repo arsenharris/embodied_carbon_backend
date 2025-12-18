@@ -6,14 +6,11 @@ from django.apps import apps
 from rest_framework import status
 from .data.material_reference import MATERIAL_COEFFS, PRESET_PERCENTAGES
 from .data.reference_data import  PRODUCT_LIST,MANUFACTURING_LOCATION,REFRIGERANT_GWP,INSTALLATION_LOCATION
-from .calculations.calculations import (calculate_a1_from_instance,calculate_a2_from_instance,calculate_a3_from_instance,calculate_a4_from_instance)
+from .calculations.calculations import (calculate_a1_from_instance,calculate_a2_from_instance,calculate_a3_from_instance,calculate_a4_from_instance,calculate_b1andc1_from_instance,calculate_c2_from_instance,calculate_c3_from_instance,calculate_c4_from_instance)
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors, pagesizes
 from reportlab.lib.styles import getSampleStyleSheet
-
-
-
 
 class EmbodiedCarbonList(APIView):
     def get_product(self, product_type: str) -> dict:
@@ -63,7 +60,8 @@ class EmbodiedCarbonList(APIView):
         refrigerant_charge_kg = data.get("refrigerant_charge_kg", None)
         refrigerant_leakage_rate_pct_per_year = data.get("refrigerant_leakage_rate_pct_per_year", None)
         location_of_use = self.get_installation_location(data.get("location_of_use"))["installation"]
-
+        scaleup_factor=1.6
+        buffer_factor=1.3
 
         serializer = EmbodiedCarbonSerializer(data={"project_name": project_name, "product_type": product_type, "weight_kg": weight_kg, "electricity_usage_kwh": electricity_usage_kwh, "location_of_factory": location_of_factory, "lifetime_years": lifetime_years, "refrigerant_used": refrigerant_used, "refrigerant_charge_kg": refrigerant_charge_kg, "refrigerant_leakage_rate_pct_per_year": refrigerant_leakage_rate_pct_per_year, "location_of_use": location_of_use})
         if not serializer.is_valid():
@@ -76,39 +74,77 @@ class EmbodiedCarbonList(APIView):
         if materials_override and isinstance(materials_override, dict):
             setattr(instance, 'materials_override', materials_override)
 
-        tier = (data.get("freetier") or "basic" or "professional").lower()
+        tier = "professional"
 
         try:
             if tier == 'freetier':
-                a1_res = calculate_a1_from_instance(instance)
-                a1_val = float(a1_res.get('total_a1', 0.0))
-                return Response({ "a1": a1_val,}, status=status.HTTP_201_CREATED)
+                a1_val_free = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
+                return Response({ "a1": a1_val_free,}, status=status.HTTP_201_CREATED)
 
             if tier == 'basic':
-                    a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
-                    a2_res = calculate_a2_from_instance(instance)
-                    a2_val = float(a2_res.get('total_a2', 0.0))
-
-                    a3_res = calculate_a3_from_instance(instance)
-                    a3_val = float(a3_res.get('total_a3', 0.0))
-
-                    a4_res = calculate_a4_from_instance(instance)
-                    a4_val = float(a4_res.get('total_a4', 0.0))
-                    total_a=a1_val + a2_val + a3_val + a4_val
-                    return Response({ "a1": a1_val, "a2": a2_val, "a3": a3_val, "a4": a4_val,"total_a": total_a,}, status=status.HTTP_201_CREATED)
-
-            if tier == 'professional':
                     a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
                     a2_val = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
                     a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
                     a4_val = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
+                    total_a1_replaced=(a1_val)*1.1
+                    remaining_life_cycle_stages=total_a1_replaced*scaleup_factor
+                    conservative_buffer_factor=remaining_life_cycle_stages*buffer_factor
+                    total_b1 = calculate_b1andc1_from_instance(instance).get("total_b1", 0.0)
+                    total_c1 = calculate_b1andc1_from_instance(instance).get("total_c1", 0.0)
+                    b1_c1_val= total_b1 + total_c1
+                    basic_total=conservative_buffer_factor + b1_c1_val
 
-                    return Response({"a1": a1_val,"a2": a2_val,"a3": a3_val,"a4": a4_val,
+                    return Response({ 
+                        "a1": a1_val, 
+                        "a2": a2_val, 
+                        "a3": a3_val, 
+                        "a4": a4_val,
+                        "total_a1_a4_replaced": total_a1_replaced, 
+                        "remaining life cycle stages":remaining_life_cycle_stages, 
+                        "conservative buffer factor": conservative_buffer_factor, 
+                        "b1_c1": b1_c1_val,
+                        "basic_total": basic_total   
+                        }, status=status.HTTP_201_CREATED)
+            
+            if tier == 'professional':
+                    a1_val_pro = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
+                    a2_val_pro = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
+                    a3_val_pro = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
+                    a4_val_pro = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
+                    total_a1_to_a4_pro=(a1_val_pro+a2_val_pro+a3_val_pro+a4_val_pro)
+                    total_c2_pro = calculate_c2_from_instance(instance).get("total_c2", 0.0)
+                    total_c3_pro = calculate_c3_from_instance(instance).get("total_c3", 0.0)
+                    total_c4_pro = calculate_c4_from_instance(instance).get("total_c4", 0.0)
+                    c2_to_c4_pro = total_c2_pro + total_c3_pro + total_c4_pro
+                    b3_val_pro = (total_a1_to_a4_pro * 0.1)+(c2_to_c4_pro*0.1)
+                    with_buffer_pro=(total_a1_to_a4_pro+c2_to_c4_pro+b3_val_pro)*buffer_factor
+                    total_b1_pro = calculate_b1andc1_from_instance(instance).get("total_b1", 0.0)
+                    total_c1_pro = calculate_b1andc1_from_instance(instance).get("total_c1", 0.0)
+                    b1_c1_val_pro= total_b1_pro + total_c1_pro
+                    mid_level=with_buffer_pro + b1_c1_val_pro
+
+                    return Response({
+                        "a1": a1_val_pro, 
+                        "a2": a2_val_pro, 
+                        "a3": a3_val_pro, 
+                        "a4": a4_val_pro,
+                        "total a1 to a4": total_a1_to_a4_pro, 
+                        "total_c2": total_c2_pro,
+                        "total_c3": total_c3_pro,
+                        "total_c4": total_c4_pro,
+                        
+                        "c2_to_c4": c2_to_c4_pro,
+                        "b3 (10% of a1 to a4)": b3_val_pro,
+                        "buffer_factor":with_buffer_pro,
+                        "b1": total_b1_pro,
+                        "c1": total_c1_pro,
+                        "b1_c1": b1_c1_val_pro,
+                        "mid level total": mid_level
                     }, status=status.HTTP_201_CREATED)
 
 
         except Exception as exc: 
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": str(exc)}, status=status.HTTP_408_REQUEST_TIMEOUT)
 
 
 
@@ -177,14 +213,23 @@ class EmbodiedCarbonExportPDF(APIView):
         elements.append(Paragraph(f"Tier: {tier.capitalize()}", styles['Normal']))
         elements.append(Spacer(1, 12))
 
+
+        # Short lookup: find GWP from REFRIGERANT_GWP and append if found
+        refrigerant_display = instance.refrigerant_used or "Not specified"
+        normalized = (instance.refrigerant_used or "").strip().lower()
+        gwp_val = next((r.get("gwp") for r in REFRIGERANT_GWP if r.get("refrigerant", "").lower() == normalized), None)
+        gwp_suffix = f" — GWP: {gwp_val}" if gwp_val is not None else ""
+        refrigerant_display = f"{refrigerant_display}{gwp_suffix}"
+
         data = [
             ["Type of product", instance.product_type],
             ["Capacity", f"{instance.capacity_kw} kW" if instance.capacity_kw else "N/A"],
             ["Product weight", f"{instance.weight_kg} kg" if instance.weight_kg else "N/A"],
             ["Material % breakdown ≥95%", "Yes"],
             ["Product service life", f"{instance.lifetime_years} years" if instance.lifetime_years else "N/A"],
-            ["Refrigerant type",f"{instance.refrigerant_used}"],
-            ["Refrigerant charge",f"{instance.refrigerant_charge_kg} kg"if instance.refrigerant_charge_kg else "Not applicable"],]
+            ["Refrigerant type", refrigerant_display],
+            ["Refrigerant charge", f"{instance.refrigerant_charge_kg} kg" if instance.refrigerant_charge_kg else "Not applicable"],
+        ]
 
         table = Table(data, colWidths=[200, 300])
         table.setStyle(TableStyle([

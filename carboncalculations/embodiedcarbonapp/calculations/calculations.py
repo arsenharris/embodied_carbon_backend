@@ -191,7 +191,11 @@ def calculate_b1andc1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     
     if instance is None:  # validate instance provided
         raise ValueError("instance is required")  # raise if no instance
-
+    
+    product_type = getattr(instance, "product_type", None)  # read product_type from the model instance
+    if product_type is None:  # ensure product_type exists
+        raise ValueError("instance.product_type is required")  # error if missing
+    
     refrigerant_used = getattr(instance, "refrigerant_used", None)
     if refrigerant_used is None:
         raise ValueError("instance.refrigerant_used is required")
@@ -204,19 +208,21 @@ def calculate_b1andc1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     if lifetime_years is None:
         raise ValueError("instance.lifetime_years is required")
     
-    for product in REFRIGERANT_GWP:
-        if product["product"].lower() == refrigerant_used.lower():
-            gwp = product["gwp"]
+    for refrigerant in REFRIGERANT_GWP:
+        if refrigerant["refrigerant"].lower() == refrigerant_used.lower():
+            gwp = refrigerant["gwp"]
             break
     else:
         raise ValueError(f"No product found for refrigerant '{refrigerant_used}'")
-    
-    capacity_kw=getattr(instance, "capacity_kw", None)
-    if capacity_kw >=100:
+
+    capacity_kw = getattr(instance, "capacity_kw", None)
+
+    if capacity_kw is not None and capacity_kw >= 100:
         scenario_index = 0  # first scenario: >100 kW
 
     else:
         scenario_index = 1  # second scenario: <100 kW
+
     annual_leakage_rate_b1_use = REFRIGERANT_LEAKAGE_SCENARIOS[scenario_index]["annual_leakage_rate_b1_use"]
     end_of_life_leakage_rate_c1_deconstruction = REFRIGERANT_LEAKAGE_SCENARIOS[scenario_index]["end_of_life_leakage_rate_c1_deconstruction"]
 
@@ -226,16 +232,13 @@ def calculate_b1andc1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     total_c1 = refrigerant_charge_kg * end_of_life_leakage_rate_c1_deconstruction * gwp
     totalb1_c1= total_b1 + total_c1
     return {
+        "annual_leakage_rate_b1_use": annual_leakage_rate_b1_use,
+        "end_of_life_leakage_rate_c1_deconstruction": end_of_life_leakage_rate_c1_deconstruction,
+        "total_b1": total_b1,
+        "total_c1": total_c1,
         "total b1 and c1": totalb1_c1,
 
     }
-
-
-
-
-
-
-
 
 
 # ################this needs to check if it is below 100kw or nor
@@ -260,6 +263,7 @@ def calculate_c2_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
             break
     else:
         raise ValueError(f"No product found for product_type '{product_type}'")
+    
     total_c2 = weight_tonnes * c2_distance_km * TRANSPORT_EMISSION_FACTOR_A2_C2  
     return {
         "total_c2": total_c2,
@@ -273,15 +277,17 @@ def calculate_c3_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     product_type = getattr(instance, "product_type", None)  # read product_type from the model instance
     if product_type is None:  # ensure product_type exists
         raise ValueError("instance.product_type is required")  # error if missing
-    
+    location_of_factory = getattr(instance, "location_of_factory", None)
+    if location_of_factory is None:  # ensure location exists
+        raise ValueError("instance.location_of_factory is required")  # error if missing
     energy_kwh_per_unit = getattr(instance, "electricity_usage_kwh", None)
 
-    for product in MANUFACTURING_LOCATION:
-        if product["product"].lower() == product_type.lower():
-            electricity_carbon_factor = product["electricity_carbon_factor"]
+    for location in MANUFACTURING_LOCATION:
+        if location["location"].lower() == location_of_factory.lower():
+            electricity_carbon_factor = location["electricity_carbon_factor"]
             break
     else:
-        raise ValueError(f"No product found for product_type '{product_type}'")
+        raise ValueError(f"No product found for product_type '{location_of_factory}'")
     total_c3 = energy_kwh_per_unit * electricity_carbon_factor
     return {
         "total_c3": total_c3,
@@ -297,14 +303,13 @@ def calculate_c4_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
         raise ValueError("instance.product_type is required")  # error if missing
     
     total_weight_kg = getattr(instance, "weight_kg", None)  # read total weight (kg) from the model instance
-    
     for product in PRODUCT_LIST:
         if product["product"].lower() == product_type.lower():
             landfill_pct = product["landfill_pct"]
             break
     else:
         raise ValueError(f"No product found for product_type '{product_type}'")
-    total_c4 = float(total_weight_kg) * landfill_pct * LANDFILL_EMISSION_FACTOR
+    total_c4 = float(total_weight_kg)* landfill_pct * LANDFILL_EMISSION_FACTOR
     return {
         "total_c4": total_c4,
     }
