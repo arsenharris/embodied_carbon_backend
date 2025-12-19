@@ -209,6 +209,129 @@ class ProductRequirements(APIView):
         required = product_requirements.get(normalized, [])
         return Response({"required_fields": required}, status=status.HTTP_200_OK)
 
+
+class ProjectsList(APIView):
+    """Return a list of all Projects (used as home page data)."""
+    def get(self, request):
+        projects = Project.objects.all().order_by("name")
+        serializer = ProjectSerializer(projects, many=True)
+        return Response(serializer.data)
+
+
+class ProjectDetail(APIView):
+    """Return a single Project and its related products (EmbodiedCarbon records)."""
+    def get(self, request, id):
+        EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
+        project = Project.objects.filter(id=id).first()
+        if not project:
+            return Response({"error": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        products = EmbodiedCarbon.objects.filter(project=project)
+        project_data = ProjectSerializer(project).data
+        products_data = EmbodiedCarbonSerializer(products, many=True).data
+
+        return Response({"project": project_data, "products": products_data}, status=status.HTTP_200_OK)
+
+
+class CompareProducts(APIView):
+    """Compare two existing `EmbodiedCarbon` records side-by-side.
+
+    POST payload options:
+    - {"left_id": 1, "right_id": 2}
+    - or provide list: {"ids": [1, 2]}
+
+    Response contains per-stage results for each record, normalized metrics
+    (per kW, per kg when available), and absolute + percent differences.
+    """
+    def post(self, request):
+        EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
+
+        left_id = request.data.get('left_id')
+        right_id = request.data.get('right_id')
+        ids = request.data.get('ids')
+        if ids and isinstance(ids, (list, tuple)) and len(ids) >= 2:
+            left_id, right_id = ids[0], ids[1]
+
+        if not left_id or not right_id:
+            return Response({"error": "Provide 'left_id' and 'right_id' or 'ids':[left,right]"}, status=status.HTTP_400_BAD_REQUEST)
+
+        left = EmbodiedCarbon.objects.filter(id=left_id).first()
+        right = EmbodiedCarbon.objects.filter(id=right_id).first()
+        if not left or not right:
+            return Response({"error": "One or both records not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        def metrics_for(instance):
+            a1 = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
+            a2 = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
+            a3 = float(calculate_a3_from_instance(instance).get('total_a3', 0.0)) if getattr(instance, 'electricity_usage_kwh', None) is not None else 0.0
+            a4 = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
+            c2 = float(calculate_c2_from_instance(instance).get('total_c2', 0.0))
+            c3 = float(calculate_c3_from_instance(instance).get('total_c3', 0.0)) if getattr(instance, 'electricity_usage_kwh', None) is not None else 0.0
+            c4 = float(calculate_c4_from_instance(instance).get('total_c4', 0.0))
+            b1c1 = calculate_b1andc1_from_instance(instance) if getattr(instance, 'refrigerant_used', None) and getattr(instance, 'refrigerant_charge_kg', None) else {'total_b1': 0.0, 'total_c1': 0.0}
+            b1 = float(b1c1.get('total_b1', 0.0))
+            c1 = float(b1c1.get('total_c1', 0.0))
+
+            total_no_refrigerant = a1 + a2 + a3 + a4 + c2 + c3 + c4
+            total_with_refrigerant = total_no_refrigerant + b1 + c1
+
+            # normalizations
+            per_kw = None
+            if getattr(instance, 'capacity_kw', None):
+                per_kw = {
+                    'total_no_refrigerant_per_kw': total_no_refrigerant / float(instance.capacity_kw),
+                    'total_with_refrigerant_per_kw': total_with_refrigerant / float(instance.capacity_kw)
+                }
+            per_kg = None
+            if getattr(instance, 'weight_kg', None):
+                per_kg = {
+                    'total_no_refrigerant_per_kg': total_no_refrigerant / float(instance.weight_kg),
+                    'total_with_refrigerant_per_kg': total_with_refrigerant / float(instance.weight_kg)
+                }
+
+            return {
+                'id': instance.id,
+                'product_type': instance.product_type,
+                'a1': a1, 'a2': a2, 'a3': a3, 'a4': a4,
+                'b1': b1, 'c1': c1,
+                'c2': c2, 'c3': c3, 'c4': c4,
+                'total_no_refrigerant': total_no_refrigerant,
+                'total_with_refrigerant': total_with_refrigerant,
+                'per_kw': per_kw,
+                'per_kg': per_kg,
+            }
+
+        left_metrics = metrics_for(left)
+        right_metrics = metrics_for(right)
+
+        def diff(a, b):
+            try:
+                abs_diff = b - a
+                pct = (abs_diff / a * 100.0) if a != 0 else None
+                return {'absolute': abs_diff, 'percent': pct}
+            except Exception:
+                return {'absolute': None, 'percent': None}
+
+        comparison = {
+            'left': left_metrics,
+            'right': right_metrics,
+            'differences': {
+                'total_no_refrigerant': diff(left_metrics['total_no_refrigerant'], right_metrics['total_no_refrigerant']),
+                'total_with_refrigerant': diff(left_metrics['total_with_refrigerant'], right_metrics['total_with_refrigerant']),
+            }
+        }
+
+        # if normalization available for both sides, include normalized diffs
+        if left_metrics.get('per_kw') and right_metrics.get('per_kw'):
+            comparison['differences']['total_no_refrigerant_per_kw'] = diff(left_metrics['per_kw']['total_no_refrigerant_per_kw'], right_metrics['per_kw']['total_no_refrigerant_per_kw'])
+            comparison['differences']['total_with_refrigerant_per_kw'] = diff(left_metrics['per_kw']['total_with_refrigerant_per_kw'], right_metrics['per_kw']['total_with_refrigerant_per_kw'])
+
+        if left_metrics.get('per_kg') and right_metrics.get('per_kg'):
+            comparison['differences']['total_no_refrigerant_per_kg'] = diff(left_metrics['per_kg']['total_no_refrigerant_per_kg'], right_metrics['per_kg']['total_no_refrigerant_per_kg'])
+            comparison['differences']['total_with_refrigerant_per_kg'] = diff(left_metrics['per_kg']['total_with_refrigerant_per_kg'], right_metrics['per_kg']['total_with_refrigerant_per_kg'])
+
+        return Response(comparison, status=status.HTTP_200_OK)
+
 class EmbodiedCarbonExportPDF(APIView):
     """Export embodied carbon records as a simple PDF report.
 
