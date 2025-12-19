@@ -6,7 +6,8 @@ from django.apps import apps
 from rest_framework import status
 from .data.material_reference import MATERIAL_COEFFS, PRESET_PERCENTAGES
 from .data.reference_data import  PRODUCT_LIST,MANUFACTURING_LOCATION,REFRIGERANT_GWP,INSTALLATION_LOCATION
-from .calculations.calculations import (calculate_a1_from_instance,calculate_a2_from_instance,calculate_a3_from_instance,calculate_a4_from_instance,calculate_b1andc1_from_instance,calculate_c2_from_instance,calculate_c3_from_instance,calculate_c4_from_instance)
+from .calculations.calculations import (calculate_a1_from_instance, calculate_a2_from_instance,calculate_a3_from_instance, calculate_a4_from_instance,calculate_b1andc1_from_instance, calculate_c2_from_instance, calculate_c3_from_instance, calculate_c4_from_instance)
+from .data.logic import product_requirements
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors, pagesizes
@@ -50,20 +51,23 @@ class EmbodiedCarbonList(APIView):
     
     def post(self, request):    
         data = request.data
-        project_name = data.get("project_name")
-        product_type = self.get_product(data.get("product_type"))["product"]
-        weight_kg = data.get("weight_kg")
-        electricity_usage_kwh = data.get("electricity_usage_kwh")
-        location_of_factory = self.get_manufacturing_location(data.get("location_of_factory"))["location"]
-        lifetime_years = data.get("lifetime_years", None)
-        refrigerant_used = self.get_refrigerant(data.get("refrigerant_used"))["refrigerant"]
-        refrigerant_charge_kg = data.get("refrigerant_charge_kg", None)
-        refrigerant_leakage_rate_pct_per_year = data.get("refrigerant_leakage_rate_pct_per_year", None)
-        location_of_use = self.get_installation_location(data.get("location_of_use"))["installation"]
-        scaleup_factor=1.6
-        buffer_factor=1.3
-
-        serializer = EmbodiedCarbonSerializer(data={"project_name": project_name, "product_type": product_type, "weight_kg": weight_kg, "electricity_usage_kwh": electricity_usage_kwh, "location_of_factory": location_of_factory, "lifetime_years": lifetime_years, "refrigerant_used": refrigerant_used, "refrigerant_charge_kg": refrigerant_charge_kg, "refrigerant_leakage_rate_pct_per_year": refrigerant_leakage_rate_pct_per_year, "location_of_use": location_of_use})
+        product_type_raw = data.get("product_type")
+        if not product_type_raw:
+            return Response({"error": "product_type is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        product_info = self.get_product(product_type_raw)
+        product_type = product_info["product"]
+        
+        required_fields = product_requirements.get(product_type.lower(), [])
+        
+        serializer_data = {}
+        for field in required_fields:
+            value = data.get(field)
+            if value is None:
+                return Response({"error": f"{field} is required for {product_type}"}, status=status.HTTP_400_BAD_REQUEST)
+            serializer_data[field] = value
+        
+        serializer = EmbodiedCarbonSerializer(data=serializer_data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -75,7 +79,8 @@ class EmbodiedCarbonList(APIView):
             setattr(instance, 'materials_override', materials_override)
 
         tier = "basic"
-
+        scaleup_factor = 1.6
+        buffer_factor = 1.3
         try:
             if tier == 'freetier':
                 a1_val_free = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
@@ -84,13 +89,14 @@ class EmbodiedCarbonList(APIView):
             if tier == 'basic':
                     a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
                     a2_val = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
-                    a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
+                    a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0)) if instance.electricity_usage_kwh is not None else 0.0
                     a4_val = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
                     total_a1_replaced=(a1_val)*1.1
                     remaining_life_cycle_stages=total_a1_replaced*scaleup_factor
                     conservative_buffer_factor=remaining_life_cycle_stages*buffer_factor
-                    total_b1 = calculate_b1andc1_from_instance(instance).get("total_b1", 0.0)
-                    total_c1 = calculate_b1andc1_from_instance(instance).get("total_c1", 0.0)
+                    b1_c1_result = calculate_b1andc1_from_instance(instance) if instance.refrigerant_used and instance.refrigerant_charge_kg else {'total_b1': 0.0, 'total_c1': 0.0}
+                    total_b1 = b1_c1_result.get("total_b1", 0.0)
+                    total_c1 = b1_c1_result.get("total_c1", 0.0)
                     b1_c1_val= total_b1 + total_c1
                     basic_total=conservative_buffer_factor + b1_c1_val
 
@@ -110,17 +116,18 @@ class EmbodiedCarbonList(APIView):
             if tier == 'professional':
                     a1_val_pro = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
                     a2_val_pro = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
-                    a3_val_pro = float(calculate_a3_from_instance(instance).get('total_a3', 0.0))
+                    a3_val_pro = float(calculate_a3_from_instance(instance).get('total_a3', 0.0)) if instance.electricity_usage_kwh is not None else 0.0
                     a4_val_pro = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
                     total_a1_to_a4_pro=(a1_val_pro+a2_val_pro+a3_val_pro+a4_val_pro)
                     total_c2_pro = calculate_c2_from_instance(instance).get("total_c2", 0.0)
-                    total_c3_pro = calculate_c3_from_instance(instance).get("total_c3", 0.0)
+                    total_c3_pro = calculate_c3_from_instance(instance).get("total_c3", 0.0) if instance.electricity_usage_kwh is not None else 0.0
                     total_c4_pro = calculate_c4_from_instance(instance).get("total_c4", 0.0)
                     c2_to_c4_pro = total_c2_pro + total_c3_pro + total_c4_pro
                     b3_val_pro = (total_a1_to_a4_pro * 0.1)+(c2_to_c4_pro*0.1)
                     with_buffer_pro=(total_a1_to_a4_pro+c2_to_c4_pro+b3_val_pro)*buffer_factor
-                    total_b1_pro = calculate_b1andc1_from_instance(instance).get("total_b1", 0.0)
-                    total_c1_pro = calculate_b1andc1_from_instance(instance).get("total_c1", 0.0)
+                    b1_c1_result_pro = calculate_b1andc1_from_instance(instance) if instance.refrigerant_used and instance.refrigerant_charge_kg else {'total_b1': 0.0, 'total_c1': 0.0}
+                    total_b1_pro = b1_c1_result_pro.get("total_b1", 0.0)
+                    total_c1_pro = b1_c1_result_pro.get("total_c1", 0.0)
                     b1_c1_val_pro= total_b1_pro + total_c1_pro
                     mid_level=with_buffer_pro + b1_c1_val_pro
 
@@ -174,14 +181,16 @@ class MaterialsPresets(APIView):
             return Response({"message": "Saved successfully"}, status=200)
 
 
-class MaterialsElectricityFactors(APIView):
-    ''' getting electricity carbon factors for manufacturing locations '''
+class ProductRequirements(APIView):
+    ''' getting required fields for a product type '''
     def get(self, request):
-        try:
-            factors = {loc['key']: loc.get('electricity_carbon_factor') for loc in MANUFACTURING_LOCATION}
-        except Exception:
-            factors = {}
-        return Response(factors, status=status.HTTP_200_OK)
+        product_type = request.GET.get("product_type")
+        if not product_type:
+            return Response({"error": "product_type is required"}, status=400)
+        
+        normalized = product_type.strip().lower()
+        required = product_requirements.get(normalized, [])
+        return Response({"required_fields": required}, status=status.HTTP_200_OK)
 
 class EmbodiedCarbonExportPDF(APIView):
     """Export embodied carbon records as a simple PDF report.
