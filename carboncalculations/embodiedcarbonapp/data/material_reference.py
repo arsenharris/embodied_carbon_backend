@@ -171,7 +171,7 @@ PRESET_PERCENTAGES = {
         "steel": 5,
     },
 
-    "heat interface unit (hiu)": {
+    "heat interface unit": {
         "steel": 40,
         "copper": 30,
         "brass": 10,
@@ -197,7 +197,7 @@ PRESET_PERCENTAGES = {
         "copper": 10,
     },
 
-    "louminaire  led": {
+    "luminaire_led": {
         "aluminium": 40,
         "steel": 20,
         "plastics": 15,
@@ -206,7 +206,7 @@ PRESET_PERCENTAGES = {
         "glass": 5,
     },
 
-    "mvhr unit": {
+    "mvhr_unit": {
         "steel": 35,
         "aluminium": 15,
         "plastics": 20,
@@ -247,7 +247,7 @@ PRESET_PERCENTAGES = {
         "printed_wiring_board_mixed_mounted": 2,
     },
 
-    "thermal store": {
+    "thermal_store": {
         "steel": 70,
         "insulation": 20,
         "plastics": 5,
@@ -268,7 +268,7 @@ PRESET_PERCENTAGES = {
         "rubber": 5,
         "plastics": 5,
     },
-    "vav box": {
+    "vav_box": {
         "steel": 50,
         "aluminium": 20,
         "insulation": 15,
@@ -278,7 +278,7 @@ PRESET_PERCENTAGES = {
         "pvc": 2,
     },
 
-    "vrf indoor unit": {
+    "vrf_indoor_unit": {
         "steel": 15, 
         "aluminium": 10, 
         "copper": 12,
@@ -290,7 +290,7 @@ PRESET_PERCENTAGES = {
         "rubber": 2,
     },
 
-    "vrf outdoor unit": {
+    "vrf_outdoor_unit": {
         "steel": 50, 
         "aluminium": 10, 
         "copper": 20,

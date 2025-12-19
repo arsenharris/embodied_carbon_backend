@@ -79,7 +79,7 @@ class EmbodiedCarbonList(APIView):
         try:
             if tier == 'freetier':
                 a1_val_free = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
-                return Response({ "a1": a1_val_free,}, status=status.HTTP_201_CREATED)
+                return Response({ "id": instance.id, "a1": a1_val_free,}, status=status.HTTP_201_CREATED)
 
             if tier == 'basic':
                     a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
@@ -95,6 +95,7 @@ class EmbodiedCarbonList(APIView):
                     basic_total=conservative_buffer_factor + b1_c1_val
 
                     return Response({ 
+                        "id": instance.id,
                         "a1": a1_val, 
                         "a2": a2_val, 
                         "a3": a3_val, 
@@ -124,6 +125,7 @@ class EmbodiedCarbonList(APIView):
                     mid_level=with_buffer_pro + b1_c1_val_pro
 
                     return Response({
+                        "id": instance.id,
                         "a1": a1_val_pro, 
                         "a2": a2_val_pro, 
                         "a3": a3_val_pro, 
