@@ -215,13 +215,11 @@ def calculate_b1andc1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
     else:
         raise ValueError(f"No product found for refrigerant '{refrigerant_used}'")
 
-    capacity_kw = getattr(instance, "capacity_kw", None)
-
-    if capacity_kw is not None and capacity_kw >= 100:
-        scenario_index = 0  # first scenario: >100 kW
+    if refrigerant_charge_kg >= 100:
+        scenario_index = 0  # first scenario: charge >=100 kg
 
     else:
-        scenario_index = 1  # second scenario: <100 kW
+        scenario_index = 1  # second scenario: charge <100 kg
 
     annual_leakage_rate_b1_use = REFRIGERANT_LEAKAGE_SCENARIOS[scenario_index]["annual_leakage_rate_b1_use"]
     end_of_life_leakage_rate_c1_deconstruction = REFRIGERANT_LEAKAGE_SCENARIOS[scenario_index]["end_of_life_leakage_rate_c1_deconstruction"]
@@ -237,11 +235,7 @@ def calculate_b1andc1_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
         "total_b1": total_b1,
         "total_c1": total_c1,
         "total b1 and c1": totalb1_c1,
-
     }
-
-
-# ################this needs to check if it is below 100kw or nor
 
 def calculate_c2_from_instance(instance: EmbodiedCarbon) -> Dict[str, Any]:
 

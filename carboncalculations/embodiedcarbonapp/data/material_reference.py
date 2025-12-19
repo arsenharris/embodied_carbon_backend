@@ -308,12 +308,12 @@ TRANSPORT_EMISSION_FACTORS_SEA = 0.02
 LANDFILL_EMISSION_FACTOR = 0.2  # kg CO2e / kg waste
 REFRIGERANT_LEAKAGE_SCENARIOS = [
 	{
-		# "product_type": "Charge greater than 100 kg (type A)",
+		# "product_type": "Capacity greater than 100 kg (type A)",
 		"annual_leakage_rate_b1_use": 0.09,
 		"end_of_life_leakage_rate_c1_deconstruction": 0.05,
 	},
 	{
-		# "product_type": "Charge less than 100 kg (type B)",
+		# "product_type": "Capacity less than 100 kg (type B)",
 		"annual_leakage_rate_b1_use": 0.09,
 		"end_of_life_leakage_rate_c1_deconstruction": 0.30,
 	},

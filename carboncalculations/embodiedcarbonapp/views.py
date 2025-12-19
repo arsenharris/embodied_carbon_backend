@@ -78,7 +78,7 @@ class EmbodiedCarbonList(APIView):
         if materials_override and isinstance(materials_override, dict):
             setattr(instance, 'materials_override', materials_override)
 
-        tier = "basic"
+        tier = "professional"
         scaleup_factor = 1.6
         buffer_factor = 1.3
         try:
@@ -88,28 +88,30 @@ class EmbodiedCarbonList(APIView):
 
             if tier == 'basic':
                     a1_val = float(calculate_a1_from_instance(instance).get('total_a1', 0.0))
-                    a2_val = float(calculate_a2_from_instance(instance).get('total_a2', 0.0))
-                    a3_val = float(calculate_a3_from_instance(instance).get('total_a3', 0.0)) if instance.electricity_usage_kwh is not None else 0.0
-                    a4_val = float(calculate_a4_from_instance(instance).get('total_a4', 0.0))
-                    total_a1_replaced=(a1_val)*1.1
-                    remaining_life_cycle_stages=total_a1_replaced*scaleup_factor
+                    total_a1_replaced=(a1_val)*0.1
+                    a1_together=(a1_val+total_a1_replaced)
+                    remaining_life_cycle_stages=a1_together*scaleup_factor
                     conservative_buffer_factor=remaining_life_cycle_stages*buffer_factor
                     b1_c1_result = calculate_b1andc1_from_instance(instance) if instance.refrigerant_used and instance.refrigerant_charge_kg else {'total_b1': 0.0, 'total_c1': 0.0}
                     total_b1 = b1_c1_result.get("total_b1", 0.0)
                     total_c1 = b1_c1_result.get("total_c1", 0.0)
                     b1_c1_val= total_b1 + total_c1
+                    annual_leakage_rate_b1_use = b1_c1_result.get('annual_leakage_rate_b1_use', 0.0)
+                    end_of_life_leakage_rate_c1_deconstruction = b1_c1_result.get('end_of_life_leakage_rate_c1_deconstruction', 0.0)
                     basic_total=conservative_buffer_factor + b1_c1_val
 
                     return Response({ 
                         "id": instance.id,
                         "a1": a1_val, 
-                        "a2": a2_val, 
-                        "a3": a3_val, 
-                        "a4": a4_val,
-                        "total_a1_a4_replaced": total_a1_replaced, 
+                        "total a1 replaced": total_a1_replaced,
+                        "a1 together ":a1_together,
                         "remaining life cycle stages":remaining_life_cycle_stages, 
                         "conservative buffer factor": conservative_buffer_factor, 
+                        "b1": total_b1,
+                        "c1": total_c1,
                         "b1_c1": b1_c1_val,
+                        "annual_leakage_rate_b1_use":annual_leakage_rate_b1_use,
+                        "end_of_life_leakage_rate_c1_deconstruction":end_of_life_leakage_rate_c1_deconstruction,
                         "basic_total": basic_total   
                         }, status=status.HTTP_201_CREATED)
             
