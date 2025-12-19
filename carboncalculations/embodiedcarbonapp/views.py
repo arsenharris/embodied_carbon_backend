@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializer import EmbodiedCarbonSerializer
+from .serializer import EmbodiedCarbonSerializer, ProjectSerializer
+from .models import Project
 from django.http import HttpResponse
 from django.apps import apps
 from rest_framework import status
@@ -59,9 +60,23 @@ class EmbodiedCarbonList(APIView):
         product_type = product_info["product"]
         
         required_fields = product_requirements.get(product_type.lower(), [])
-        
+
+        # project: accept either `project` (name) or legacy `project_name`.
+        project_name = data.get("project") or data.get("project_name")
+        if not project_name and "project_name" in required_fields:
+            return Response({"error": "project_name is required for {product_type}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ensure Project exists (create if missing)
+        if project_name:
+            project_obj, _ = Project.objects.get_or_create(name=project_name)
+
         serializer_data = {}
         for field in required_fields:
+            # map incoming 'project_name' to serializer field 'project'
+            if field == "project_name":
+                # serializer expects project by name (SlugRelatedField)
+                serializer_data["project"] = project_obj.name
+                continue
             value = data.get(field)
             if value is None:
                 return Response({"error": f"{field} is required for {product_type}"}, status=status.HTTP_400_BAD_REQUEST)
