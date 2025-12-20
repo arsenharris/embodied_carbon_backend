@@ -15,7 +15,12 @@ class CustomUserList(APIView):
         return Response (serializer.data)
     
     def post (self,request):
-        serializer=CustomUserSerializer(data=request.data)
+        # accept either British spelling 'organisation_name' or 'organization_name'
+        payload = request.data.copy()
+        if 'organisation_name' in payload and 'organization_name' not in payload:
+            payload['organization_name'] = payload.get('organisation_name')
+
+        serializer = CustomUserSerializer(data=payload)
 
         if serializer.is_valid():
             serializer.save()

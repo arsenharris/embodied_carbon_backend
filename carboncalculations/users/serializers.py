@@ -3,11 +3,33 @@ from .models import CustomUser
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
+
     class Meta:
         model = CustomUser
-        fields = '__all__'
-        extra_kwargs = {'password' : {'write_only':True}}
+        fields = [
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'password',
+            'organization_name',
+        ]
 
-    def create (self, validated_data):
-        return CustomUser.objects.create_user(**validated_data)  
+    def create(self, validated_data):
+        # prefer using email as username when username not provided
+        first_name = validated_data.get('first_name', '')
+        last_name = validated_data.get('last_name', '')
+        email = validated_data.get('email')
+        password = validated_data.get('password')
+        organization_name = validated_data.get('organization_name', '')
+
+        user = CustomUser.objects.create_user(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            password=password,
+            organization_name=organization_name,
+        )
+        return user
 
