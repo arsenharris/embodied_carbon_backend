@@ -395,7 +395,7 @@ class EmbodiedCarbonExportPDF(APIView):
 
         elements.append(table)
         # If basic tier was requested, add a separate table with basic-tier embodied carbon results
-        if tier == 'basic':
+        if tier == 'professional':
             try:
                 # Use same scale and buffer factors as in the API calculation path
                 scaleup_factor = 1.6

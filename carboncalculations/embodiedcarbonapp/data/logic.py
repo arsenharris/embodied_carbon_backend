@@ -3,7 +3,7 @@ product_requirements = {
     "access_control_device":["project_name", "product_type", "weight_kg","location_of_factory","capacity_kw","lifetime_years","location_of_use"],
     "bms_controller" : ["project_name", "product_type", "weight_kg","location_of_factory","lifetime_years","location_of_use"],
     "boiler" : ["project_name", "product_type", "weight_kg","electricity_usage_kwh","location_of_factory","capacity_kw","lifetime_years","location_of_use"],
-    "busbar" : ["project_name", "product_type", "weight_kg","location_of_factory","lifetime_years","refrigerant_used","refrigerant_charge_kg","location_of_use"],
+    "busbar" : ["project_name", "product_type", "weight_kg","location_of_factory","lifetime_years","location_of_use"],
     "cable_containment" : ["project_name", "product_type", "weight_kg","location_of_factory","lifetime_years","location_of_use"],
     "cables" : ["project_name", "product_type", "weight_kg","location_of_factory","lifetime_years","location_of_use"],
     "chiller" : ["project_name", "product_type", "weight_kg","electricity_usage_kwh","location_of_factory","capacity_kw","lifetime_years","refrigerant_used","refrigerant_charge_kg","location_of_use"],
