@@ -41,14 +41,26 @@ CORS_ORIGIN_ALLOW_ALL = True
 INSTALLED_APPS = [
     'embodiedcarbonapp.apps.EmbodiedcarbonappConfig',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     "django.contrib.admin",
+    "users.apps.UsersConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
+#WE CREATED THIS AFTER USER APP NO 2
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.TokenAuthentication',],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination','PAGE_SIZE': 10,
+}
+
+
+
+# we added this after created user app no 1
+AUTH_USER_MODEL = 'users.CustomUser'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
