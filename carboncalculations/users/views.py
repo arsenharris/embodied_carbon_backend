@@ -62,10 +62,9 @@ class CustomAuthToken(ObtainAuthToken):
 
         token, _ =Token.objects.get_or_create(user=user)
 
-        return Response(
-            {
-                'token': token.key,
-                'user_id':user.id,
-                'email': user.email
-            }
-        )
+        # Return token plus the serialized user (serializer excludes password)
+        user_serializer = CustomUserSerializer(user)
+        return Response({
+            'token': token.key,
+            'user': user_serializer.data,
+        }, status=status.HTTP_200_OK)
