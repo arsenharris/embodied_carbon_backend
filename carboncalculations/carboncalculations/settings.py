@@ -151,3 +151,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 PORT = int(os.environ.get("PORT", 8000))
+
+# Email settings for development: print emails to the console so verification
+# links are visible when running the development server. In production, set
+# `EMAIL_BACKEND` and related SMTP settings via environment variables.
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend'
+)
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')

@@ -8,6 +8,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
+            'username',
             'id',
             'first_name',
             'last_name',
@@ -18,6 +19,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # prefer using email as username when username not provided
+        username = validated_data.get('username')
         first_name = validated_data.get('first_name', '')
         last_name = validated_data.get('last_name', '')
         email = validated_data.get('email')
@@ -25,6 +27,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         organization_name = validated_data.get('organization_name', '')
 
         user = CustomUser.objects.create_user(
+            username=username if username else email,
             first_name=first_name,
             last_name=last_name,
             email=email,
