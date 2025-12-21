@@ -11,4 +11,6 @@ urlpatterns = [
     path('product/requirements/', views.ProductRequirements.as_view()),
     path('compare/', views.CompareProducts.as_view()),
     path('projects/<int:id>/', views.ProjectDetail.as_view()),
+    path('projects/<int:project_id>/calculations/', views.ProjectCalculationsList.as_view()),
+    path('projects/<int:project_id>/calculations/<int:calc_id>/', views.ProjectCalculationDetail.as_view()),
 ]

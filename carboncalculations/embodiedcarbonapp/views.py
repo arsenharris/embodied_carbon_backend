@@ -216,6 +216,14 @@ class ProjectsList(APIView):
         projects = Project.objects.all().order_by("name")
         serializer = ProjectSerializer(projects, many=True)
         return Response(serializer.data)
+    
+    def post(self, request):
+        """Create a new Project."""
+        serializer = ProjectSerializer(data=request.data)
+        if serializer.is_valid():
+            project = serializer.save()
+            return Response(ProjectSerializer(project).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProjectDetail(APIView):
@@ -231,6 +239,28 @@ class ProjectDetail(APIView):
         products_data = EmbodiedCarbonSerializer(products, many=True).data
 
         return Response({"project": project_data, "products": products_data}, status=status.HTTP_200_OK)
+
+    def put(self, request, id):
+        """Update project fields (name, description)."""
+        project = Project.objects.filter(id=id).first()
+        if not project:
+            return Response({"error": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ProjectSerializer(project, data=request.data, partial=True)
+        if serializer.is_valid():
+            project = serializer.save()
+            return Response(ProjectSerializer(project).data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, id):
+        """Delete a project and its related products by id."""
+        project = Project.objects.filter(id=id).first()
+        if not project:
+            return Response({"error": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # related EmbodiedCarbon records will be removed due to on_delete=models.CASCADE
+        project.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CompareProducts(APIView):
@@ -708,3 +738,64 @@ class EmbodiedCarbonExportPDF(APIView):
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="embodied_carbon_report.pdf"'
         return response
+
+
+class ProjectCalculationsList(APIView):
+    """List or create calculations belonging to a project."""
+    def get(self, request, project_id):
+        EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return Response({"error": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        calculations = EmbodiedCarbon.objects.filter(project=project)
+        serializer = EmbodiedCarbonSerializer(calculations, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, project_id):
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return Response({"error": "Project not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        # ensure the serializer sees the project by name
+        data['project'] = project.name
+        serializer = EmbodiedCarbonSerializer(data=data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response(EmbodiedCarbonSerializer(instance).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProjectCalculationDetail(APIView):
+    """Retrieve, update or delete a calculation within a project."""
+    def get_object(self, project_id, calc_id):
+        EmbodiedCarbon = apps.get_model('embodiedcarbonapp.EmbodiedCarbon')
+        return EmbodiedCarbon.objects.filter(id=calc_id, project_id=project_id).first()
+
+    def get(self, request, project_id, calc_id):
+        obj = self.get_object(project_id, calc_id)
+        if not obj:
+            return Response({"error": "Calculation not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(EmbodiedCarbonSerializer(obj).data)
+
+    def put(self, request, project_id, calc_id):
+        obj = self.get_object(project_id, calc_id)
+        if not obj:
+            return Response({"error": "Calculation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        # prevent changing project via this endpoint (or ensure it stays same)
+        data['project'] = obj.project.name
+        serializer = EmbodiedCarbonSerializer(obj, data=data, partial=True)
+        if serializer.is_valid():
+            inst = serializer.save()
+            return Response(EmbodiedCarbonSerializer(inst).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, project_id, calc_id):
+        obj = self.get_object(project_id, calc_id)
+        if not obj:
+            return Response({"error": "Calculation not found"}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
