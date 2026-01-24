@@ -2,7 +2,7 @@ from ..data.material_reference import MATERIAL_COEFFS, PRESET_PERCENTAGES, PRESE
 from ..data.reference_data import PRODUCT_LIST,MANUFACTURING_LOCATION,REFRIGERANT_GWP,INSTALLATION_LOCATION
 from ..models import EmbodiedCarbon
 from typing import Dict, Any 
-
+# calculation functions
 def get_product(self, product_type: str) -> dict:
         normalized = product_type.strip().lower()
         for product in PRODUCT_LIST:
